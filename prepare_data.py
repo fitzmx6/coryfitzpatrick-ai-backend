@@ -17,8 +17,9 @@ def prepare_training_data():
     
     # Create or get collection
     try:
-        collection = client.delete_collection("cory_profile")
-    except:
+        client.delete_collection("cory_profile")
+        print("Deleted existing collection.")
+    except Exception:
         pass
     
     collection = client.create_collection(
@@ -27,30 +28,38 @@ def prepare_training_data():
     )
     
     # Load your JSONL file
-    print("Loading training data...")
+    print("Loading training data from training_data.jsonl...")
     documents = []
     metadatas = []
     ids = []
     
-    with open('training_data.jsonl', 'r', encoding='utf-8') as f:
-        for idx, line in enumerate(f):
-            if line.strip():
-                data = json.loads(line)
-                messages = data['messages']
-                
-                # Extract question and answer
-                question = messages[0]['content']
-                answer = messages[1]['content']
-                
-                # Store the answer as the document
-                documents.append(answer)
-                metadatas.append({
-                    "question": question,
-                    "answer": answer,
-                    "id": idx
-                })
-                ids.append(f"doc_{idx}")
-    
+    try:
+        with open('training_data.jsonl', 'r', encoding='utf-8') as f:
+            for idx, line in enumerate(f):
+                if line.strip():
+                    data = json.loads(line)
+                    # Use 'messages' format
+                    question = data['messages'][0]['content']
+                    answer = data['messages'][1]['content']
+                    
+                    documents.append(answer) # Embed and store the answer
+                    metadatas.append({
+                        "question": question,
+                        "answer": answer, # Store answer in metadata too
+                        "id": idx
+                    })
+                    ids.append(f"doc_{idx}")
+    except FileNotFoundError:
+        print("ERROR: training_data.jsonl not found.")
+        return
+    except Exception as e:
+        print(f"Error reading JSONL: {e}")
+        return
+
+    if not documents:
+        print("No documents found in training_data.jsonl.")
+        return
+        
     print(f"Processing {len(documents)} documents...")
     
     # Generate embeddings

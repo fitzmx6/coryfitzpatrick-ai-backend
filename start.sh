@@ -15,7 +15,6 @@ while ! curl -s http://localhost:11434/ > /dev/null 2>&1; do
 done
 echo "✅ Ollama is ready!"
 
-# 3. Start FastAPI server (it will take over)
-# Use PORT 8080 to match your railway.json
+# 3. Start FastAPI server (using the port Railway provides)
 echo "🚀 Starting FastAPI server on port ${PORT:-8080}..."
 exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}
