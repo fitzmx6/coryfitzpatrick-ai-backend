@@ -1,9 +1,13 @@
 [phases.setup]
-nixPkgs = ["curl", "bash"]
+# Add python39 to the list of packages to install
+nixPkgs = ["curl", "bash", "python39"]
 
 [phases.install]
 cmds = [
-    # Use the full path to pip to avoid "command not found"
+    # 1. Manually create the virtual environment
+    "python3.9 -m venv /opt/venv",
+    
+    # 2. Now use the pip from that venv to install requirements
     "/opt/venv/bin/pip install -r requirements.txt"
 ]
 
