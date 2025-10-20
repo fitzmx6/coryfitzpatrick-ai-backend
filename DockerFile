@@ -1,0 +1,25 @@
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Install Ollama
+RUN curl -fsSL https://ollama.com/install.sh | sh
+
+# Copy files
+COPY requirements.txt .
+COPY server.py .
+COPY prepare_data.py .
+COPY training_data.jsonl .
+COPY chroma_db ./chroma_db
+
+# Install Python deps
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Download model
+RUN ollama pull llama3.1:8b
+
+# Expose port
+EXPOSE 8000
+
+# Start Ollama and server
+CMD ollama serve & sleep 5 && python server.py
