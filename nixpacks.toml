@@ -1,14 +1,29 @@
+# nixpacks.toml
+
 [phases.setup]
-# Add python39 to the list of packages to install
 nixPkgs = ["curl", "bash", "python39"]
 
 [phases.install]
 cmds = [
-    # 1. Manually create the virtual environment
+    # 1. Create the virtual env
     "python3.9 -m venv /opt/venv",
     
-    # 2. Now use the pip from that venv to install requirements
-    "/opt/venv/bin/pip install -r requirements.txt"
+    # 2. Install Python packages
+    "/opt/venv/bin/pip install -r requirements.txt",
+    
+    # --- BUILD-TIME TASKS ---
+    # These will run ONCE and be saved in the image
+    
+    # 3. Install Ollama
+    "curl -fsSL https://ollama.com/install.sh | sh",
+    
+    # 4. Pull the model (this is the big 2GB download)
+    "echo 'Pulling llama3.2... this happens during build'",
+    "ollama pull llama3.2",
+    
+    # 5. Generate the vector database
+    "echo 'Generating vector DB... this also happens during build'",
+    "/opt/venv/bin/python prepare_data.py"
 ]
 
 [start]

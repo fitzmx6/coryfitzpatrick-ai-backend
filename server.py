@@ -1,5 +1,5 @@
 # server.py
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import chromadb
@@ -7,8 +7,37 @@ from sentence_transformers import SentenceTransformer
 import requests
 import json
 import os
+from contextlib import asynccontextmanager  # <-- Import this
 
-app = FastAPI()
+# --- Model Loading with Lifespan ---
+
+# This function runs when the app starts
+async def load_models(app: FastAPI):
+    print("Loading embedding model...")
+    app.state.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    print("Connecting to ChromaDB...")
+    app.state.chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    app.state.collection = app.state.chroma_client.get_collection("cory_profile")
+    print("✅ Models and DB loaded!")
+
+# This function runs when the app shuts down
+async def close_models(app: FastAPI):
+    print("Closing resources...")
+    # You can add cleanup code here if needed
+    pass
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # On startup
+    await load_models(app)
+    yield
+    # On shutdown
+    await close_models(app)
+
+# Pass the lifespan manager to your FastAPI app
+app = FastAPI(lifespan=lifespan)
+
+# --- End Model Loading ---
 
 # Enable CORS for your React app
 app.add_middleware(
@@ -19,39 +48,38 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# Initialize
-print("Loading models...")
-embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-chroma_client = chromadb.PersistentClient(path="./chroma_db")
-collection = chroma_client.get_collection("cory_profile")
-print("✅ Models loaded!")
-
+# ... (keep your BaseModel classes ChatRequest and ChatResponse)
 class ChatRequest(BaseModel):
     message: str
     conversation_history: list = []
 
 class ChatResponse(BaseModel):
     response: str
+# ...
+
+# --- Update your functions ---
 
 def query_ollama(prompt: str) -> str:
-    """Send prompt to local Ollama instance"""
+    # ... (this function is fine, no change needed)
     response = requests.post(
         'http://localhost:11434/api/generate',
         json={
-            'model': 'llama3.2',  # Using 3B model
+            'model': 'llama3.2',
             'prompt': prompt,
             'stream': False,
-            'options': {
-                'temperature': 0.3,
-                'top_p': 0.9,
-            }
+            'options': { 'temperature': 0.3, 'top_p': 0.9 }
         },
         timeout=120
     )
     return response.json()['response']
 
-def get_relevant_context(query: str, n_results: int = 5) -> str:
+# Update this function to get models from app.state
+def get_relevant_context(request: Request, query: str, n_results: int = 5) -> str:
     """Search vector database for relevant information"""
+    
+    # Get models from app.state instead of global scope
+    embedding_model = request.app.state.embedding_model
+    collection = request.app.state.collection
     
     # Generate embedding for the query
     query_embedding = embedding_model.encode([query]).tolist()
@@ -62,7 +90,7 @@ def get_relevant_context(query: str, n_results: int = 5) -> str:
         n_results=n_results
     )
     
-    # Format results
+    # ... (rest of this function is fine)
     if not results['documents'][0]:
         return ""
     
@@ -72,16 +100,20 @@ def get_relevant_context(query: str, n_results: int = 5) -> str:
     
     return "\n\n".join(context_parts)
 
+# Update your endpoint to accept the 'Request' object
 @app.post("/api/chat", response_model=ChatResponse)
-async def chat(request: ChatRequest):
+async def chat(fastapi_request: Request, chat_request: ChatRequest):
     try:
         # Get relevant context from vector database
-        context = get_relevant_context(request.message, n_results=5)
+        # Pass the 'fastapi_request' to your context function
+        context = get_relevant_context(fastapi_request, chat_request.message, n_results=5)
         
         if not context:
             return ChatResponse(
                 response="I can only answer questions about Cory Fitzpatrick's professional experience, skills, and achievements. Please ask about his background, technical expertise, or leadership experience."
             )
+        
+        # ... (rest of your /api/chat endpoint is fine)
         
         # Build prompt for Ollama
         system_prompt = """You are an AI assistant for Cory Fitzpatrick's professional portfolio. Your purpose is to help employers and recruiters learn about Cory's qualifications for Software Engineering Manager and Tech Lead positions.
@@ -103,7 +135,7 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
 
         prompt = system_prompt.format(
             context=context,
-            question=request.message
+            question=chat_request.message
         )
         
         # Get response from Ollama
@@ -117,13 +149,7 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
 
 @app.get("/health")
 async def health():
+    # This will now respond instantly
     return {"status": "healthy", "model": "llama3.2"}
 
-if __name__ == "__main__":
-    import uvicorn
-    
-    port = int(os.environ.get("PORT", 8000))
-    print(f"🚀 Starting server on port {port}")
-    print("📚 Model: llama3.2")
-    
-    uvicorn.run(app, host="0.0.0.0", port=port)
+# ... (remove the __main__ block, it's not needed for uvicorn)
