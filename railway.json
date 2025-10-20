@@ -1,0 +1,54 @@
+{
+  "$schema": "https://railway.app/railway.schema.json",
+  "build": {
+    "builder": "NIXPACKS"
+  },
+  "deploy": {
+    "startCommand": "bash start.sh",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3,
+    "healthcheckPath": "/health",
+    "healthcheckTimeout": 300
+  }
+}
+```
+
+---
+
+### 8. **`.railwayignore`**
+```
+.git
+.gitignore
+__pycache__/
+*.py[cod]
+venv/
+env/
+.venv
+.vscode/
+.idea/
+.DS_Store
+README.md
+.env
+*.log
+chroma_db/
+Dockerfile
+.dockerignore
+```
+
+---
+
+### 9. **`.gitignore`**
+```
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+ENV/
+.venv
+.DS_Store
+.env
+*.log
+chroma_db/

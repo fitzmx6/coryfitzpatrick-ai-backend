@@ -1,0 +1,10 @@
+[phases.setup]
+nixPkgs = ["curl", "bash"]
+
+[phases.install]
+cmds = [
+    "pip install -r requirements.txt"
+]
+
+[start]
+cmd = "bash start.sh"

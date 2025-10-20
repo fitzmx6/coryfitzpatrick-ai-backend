@@ -6,6 +6,7 @@ import chromadb
 from sentence_transformers import SentenceTransformer
 import requests
 import json
+import os
 
 app = FastAPI()
 
@@ -37,7 +38,7 @@ def query_ollama(prompt: str) -> str:
     response = requests.post(
         'http://localhost:11434/api/generate',
         json={
-            'model': 'llama3.1:8b',
+            'model': 'llama3.2',  # Using 3B model
             'prompt': prompt,
             'stream': False,
             'options': {
@@ -116,10 +117,13 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
 
 @app.get("/health")
 async def health():
-    return {"status": "healthy"}
+    return {"status": "healthy", "model": "llama3.2"}
 
 if __name__ == "__main__":
     import uvicorn
-    print("🚀 Starting server on http://localhost:8000")
-    print("📚 Make sure Ollama is running: ollama serve")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
+    
+    port = int(os.environ.get("PORT", 8000))
+    print(f"🚀 Starting server on port {port}")
+    print("📚 Model: llama3.2")
+    
+    uvicorn.run(app, host="0.0.0.0", port=port)
