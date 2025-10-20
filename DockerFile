@@ -5,21 +5,23 @@ WORKDIR /app
 # Install Ollama
 RUN curl -fsSL https://ollama.com/install.sh | sh
 
-# Copy files
+# Copy requirements first (for better caching)
 COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Copy application files
 COPY server.py .
 COPY prepare_data.py .
 COPY training_data.jsonl .
-COPY chroma_db ./chroma_db
 
-# Install Python deps
-RUN pip install --no-cache-dir -r requirements.txt
+# Start Ollama in background and pull model
+RUN ollama serve & sleep 10 && ollama pull llama3.1:8b
 
-# Download model
-RUN ollama pull llama3.1:8b
+# Generate vector database
+RUN python prepare_data.py
 
 # Expose port
 EXPOSE 8000
 
-# Start Ollama and server
-CMD ollama serve & sleep 5 && python server.py
+# Start both Ollama and server
+CMD ["sh", "-c", "ollama serve & sleep 5 && python server.py"]
