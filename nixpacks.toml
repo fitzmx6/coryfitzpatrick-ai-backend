@@ -1,7 +1,6 @@
 # nixpacks.toml
 
 [phases.setup]
-# We're telling Nixpacks we need curl, bash, and python3.9
 nixPkgs = ["curl", "bash", "python39"]
 
 [phases.install]
@@ -12,21 +11,27 @@ cmds = [
     # 2. Install all our Python packages
     "/opt/venv/bin/pip install -r requirements.txt",
     
-    # --- One-Time Build Tasks ---
-    # These run only when Railway builds the image
-    
     # 3. Install Ollama
     "curl -fsSL https://ollama.com/install.sh | sh",
     
-    # 4. Pull the smaller, faster phi model
-    "echo 'Pulling phi... this happens once during build'",
-    "ollama pull phi",
-    
+    # 4. Start Ollama, pull the model, then stop Ollama
+    # This MUST be one command to run in the same build layer
+    """
+    echo 'Starting Ollama service in background...' && \
+    ollama serve & \
+    OLLAMA_PID=$! && \
+    echo 'Waiting for Ollama to be ready...' && \
+    while ! curl -s http://localhost:11434/ > /dev/null; do sleep 1; done && \
+    echo 'Ollama is ready. Pulling model: phi' && \
+    ollama pull phi && \
+    echo 'Model pulled. Stopping Ollama service...' && \
+    kill $OLLAMA_PID
+    """,
+
     # 5. Generate the vector database
     "echo 'Generating vector DB... this also happens once during build'",
     "/opt/venv/bin/python prepare_data.py"
 ]
 
 [start]
-# This just tells Nixpacks what command to run at startup
 cmd = "bash start.sh"
