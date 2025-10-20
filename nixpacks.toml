@@ -3,7 +3,8 @@ nixPkgs = ["curl", "bash"]
 
 [phases.install]
 cmds = [
-    "pip install -r requirements.txt"
+    # Use the full path to pip to avoid "command not found"
+    "/opt/venv/bin/pip install -r requirements.txt"
 ]
 
 [start]
