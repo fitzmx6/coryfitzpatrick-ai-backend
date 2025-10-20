@@ -32,10 +32,10 @@ done
 echo "✅ Ollama is ready!"
 
 # Check if model exists, download if needed
-echo "Checking for llama3.1:3b model..."
-if ! ollama list | grep -q "llama3.1:3b"; then
-    echo "Downloading llama3.1:3b model (~2GB - this will take 3-5 minutes on first start)..."
-    ollama pull llama3.1:3b || {
+echo "Checking for llama3.2 model..."
+if ! ollama list | grep -q "llama3.2"; then
+    echo "Downloading llama3.2 model (~2GB - this will take 3-5 minutes on first start)..."
+    ollama pull llama3.2 || {
         echo "ERROR: Failed to download model"
         exit 1
     }
@@ -58,5 +58,5 @@ fi
 
 # Start FastAPI server
 echo "🚀 Starting FastAPI server on port ${PORT:-8000}..."
-echo "Model: llama3.1:3b (2GB, optimized for speed and efficiency)"
+echo "Model: llama3.2 (2GB, optimized for speed and efficiency)"
 exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8000}
