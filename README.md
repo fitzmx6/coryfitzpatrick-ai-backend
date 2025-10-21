@@ -263,5 +263,5 @@ python server.py
 This project demonstrates how to build a personal AI-driven portfolio using a RAG pipeline.
 It blends **cloud-based LLM inference (Groq)**, **semantic retrieval (ChromaDB)**, and **FastAPI** for ultra-fast, production-ready responses.
 
-Built with ❤️ by **Cory Fitzpatrick**
+Built by **Cory Fitzpatrick**
 [www.coryfitzpatrick.com](http://www.coryfitzpatrick.com)
