@@ -152,6 +152,29 @@ curl -X POST http://localhost:8000/api/chat/stream \
      --no-buffer
 ```
 
+#### Interactive Chat Client (Best for Testing)
+```bash
+python chat_client.py
+```
+
+This will start an interactive chat session where you can:
+- Ask questions about Cory's experience and skills
+- Have multi-turn conversations with context
+- See streaming responses in real-time
+- Type `quit` or `exit` to end the session
+
+Example session:
+```
+You: What is Cory good at?
+Cory's AI Assistant: Based on Cory's profile, he is good at...
+
+You: How can I contact him?
+Cory's AI Assistant: You can contact Cory via email at...
+
+You: quit
+Goodbye! Thanks for chatting!
+```
+
 Or open in your browser:
 👉 [http://localhost:8000/](http://localhost:8000/)
 👉 [http://localhost:8000/health](http://localhost:8000/health)

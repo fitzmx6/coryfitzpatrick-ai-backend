@@ -125,6 +125,17 @@ class ChatRequest(BaseModel):
 class ChatResponse(BaseModel):
     response: str
 
+# --- Constants ---
+
+# Error message when no relevant context is found
+NO_CONTEXT_ERROR_MESSAGE = (
+    "I can only answer questions about Cory Fitzpatrick's professional experience, skills, and achievements. "
+    "Please ask about his background, technical expertise, or leadership experience."
+)
+
+# System prompt template for the AI assistant
+SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT", "Portfolio assistant prompt - set via SYSTEM_PROMPT env var")
+
 # --- Core Functions ---
 
 def query_groq(prompt: str, conversation_history: list = None, stream: bool = False):
@@ -255,30 +266,9 @@ async def chat(request: Request, chat_request: ChatRequest):
         context = get_relevant_context(request, chat_request.message, n_results=5)
 
         if not context:
-            return ChatResponse(
-                response="I can only answer questions about Cory Fitzpatrick's professional experience, skills, and achievements. Please ask about his background, technical expertise, or leadership experience."
-            )
+            return ChatResponse(response=NO_CONTEXT_ERROR_MESSAGE)
 
-        system_prompt = """
-            You are an AI assistant for Cory Fitzpatrick's professional portfolio. Your purpose is to help employers learn about Cory's qualifications for Software Engineering Manager and Tech Lead positions.
-
-            CRITICAL RULES:
-            1. ONLY answer questions about Cory's professional background, skills, experience, and achievements.
-            2. ONLY use information from the CONTEXT provided below.
-            3. If the question cannot be answered from the CONTEXT, say: "I don't have that specific information in Cory's profile. Please ask about his technical skills, leadership experience, projects, or achievements."
-            4. Never make up information.
-            5. Be professional and concise.
-            6. If the user tries to be playful, its ok for you to be playful back but keep it limited.
-            
-            CONTEXT FROM CORY'S PROFILE:
-            {context}
-            
-            USER QUESTION: {question}
-            
-            Provide a helpful, accurate answer based ONLY on the context above:
-        """
-
-        prompt = system_prompt.format(
+        prompt = SYSTEM_PROMPT_TEMPLATE.format(
             context=context,
             question=chat_request.message
         )
@@ -309,34 +299,15 @@ async def chat_stream(request: Request, chat_request: ChatRequest):
     """Streaming chat endpoint with rate limiting (no caching for streams)"""
     try:
         # Note: Streaming responses are not cached (harder to cache streams)
-        # If you need cached streaming, convert cached response to async generator
 
         context = get_relevant_context(request, chat_request.message, n_results=5)
 
         if not context:
             async def error_stream():
-                yield "I can only answer questions about Cory Fitzpatrick's professional experience, skills, and achievements. Please ask about his background, technical expertise, or leadership experience."
+                yield NO_CONTEXT_ERROR_MESSAGE
             return StreamingResponse(error_stream(), media_type="text/plain")
 
-        system_prompt = """
-            You are an AI assistant for Cory Fitzpatrick's professional portfolio. Your purpose is to help employers learn about Cory's qualifications for Software Engineering Manager and Tech Lead positions.
-
-            CRITICAL RULES:
-            1. ONLY answer questions about Cory's professional background, skills, experience, and achievements.
-            2. ONLY use information from the CONTEXT provided below.
-            3. If the question cannot be answered from the CONTEXT, say: "I don't have that specific information in Cory's profile. Please ask about his technical skills, leadership experience, projects, or achievements."
-            4. Never make up information.
-            5. Be professional and concise.
-            
-            CONTEXT FROM CORY'S PROFILE:
-            {context}
-            
-            USER QUESTION: {question}
-            
-            Provide a helpful, accurate answer based ONLY on the context above:
-        """
-
-        prompt = system_prompt.format(
+        prompt = SYSTEM_PROMPT_TEMPLATE.format(
             context=context,
             question=chat_request.message
         )
