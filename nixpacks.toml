@@ -11,8 +11,8 @@ cmds = [
     # 2. Install all our Python packages
     "/opt/venv/bin/pip install -r requirements.txt",
     
-    # 3. Install Ollama
-    "curl -fsSL https://ollama.com/install.sh | sh",
+    # 3. Install Ollama with retry logic
+    "for i in 1 2 3; do curl -fsSL https://ollama.com/install.sh | sh && break || sleep 10; done",
     
     # 4. Start Ollama, pull the model, then stop Ollama
     # This MUST be one command to run in the same build layer
