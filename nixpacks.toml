@@ -1,7 +1,7 @@
 # nixpacks.toml
 
 [phases.setup]
-nixPkgs = ["curl", "bash", "python311"]
+nixPkgs = ["python311"]
 
 [phases.install]
 cmds = [
@@ -10,10 +10,7 @@ cmds = [
 
     # 2. Upgrade pip and install all our Python packages
     "/opt/venv/bin/pip install --upgrade pip",
-    "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
-    
-    # 3. Install Ollama with retry logic
-    "for i in 1 2 3; do curl -fsSL https://ollama.com/install.sh | sh && break || sleep 10; done"
+    "/opt/venv/bin/pip install -r requirements.txt"
 ]
 
 [start]

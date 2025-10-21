@@ -5,9 +5,9 @@ from fastapi.middleware.gzip import GZipMiddleware
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import chromadb
-from chromadb.config import Settings # <-- ADD THIS IMPORT
+from chromadb.config import Settings
 from sentence_transformers import SentenceTransformer
-import requests
+from groq import Groq
 import json
 import os
 from contextlib import asynccontextmanager
@@ -32,6 +32,9 @@ try:
 except Exception as e:
     print(f"⚠️  Redis connection failed: {e}. Using in-memory caching only.")
     redis_client = None
+
+# --- Groq Client Setup ---
+groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
 
 # --- Rate Limiter Setup ---
 limiter = Limiter(key_func=get_remote_address)
@@ -105,41 +108,26 @@ class ChatResponse(BaseModel):
 
 # --- Core Functions ---
 
-def query_ollama(prompt: str, stream: bool = False):
-    """Send prompt to local Ollama instance with optional streaming"""
+def query_groq(prompt: str, stream: bool = False):
+    """Send prompt to Groq API with optional streaming"""
     try:
-        response = requests.post(
-            'http://localhost:11434/api/generate',
-            json={
-                'model': 'phi',  # Using the phi model
-                'prompt': prompt,
-                'stream': stream,
-                'options': {
-                    'temperature': 0.3,
-                    'top_p': 0.9,
-                }
-            },
-            timeout=90,  # 90-second timeout (Railway hobby has ~100s request limit)
-            stream=stream  # Enable streaming at HTTP level
+        response = groq_client.chat.completions.create(
+            model="llama-3.1-8b-instant",  # Fast, high-quality model
+            messages=[
+                {"role": "user", "content": prompt}
+            ],
+            temperature=0.3,
+            max_tokens=500,
+            top_p=0.9,
+            stream=stream
         )
-        response.raise_for_status()  # Raise an error for bad responses (4xx, 5xx)
 
         if stream:
             return response  # Return the streaming response object
         else:
-            return response.json()['response']
-    except requests.Timeout:
-        print(f"Ollama request timed out after 90 seconds")
-        if stream:
-            return None
-        return "The response took too long to generate. Please try rephrasing your question to be more specific."
-    except requests.ConnectionError as e:
-        print(f"Ollama connection failed: {e}")
-        if stream:
-            return None
-        return "Sorry, I'm having trouble connecting to the AI model right now. Please try again in a moment."
-    except requests.RequestException as e:
-        print(f"Ollama request failed: {e}")
+            return response.choices[0].message.content
+    except Exception as e:
+        print(f"Groq API request failed: {e}")
         if stream:
             return None
         return "Sorry, an error occurred while processing your request. Please try again."
@@ -218,15 +206,11 @@ def get_relevant_context(request: Request, query: str, n_results: int = 5, min_s
 # --- API Endpoints ---
 
 def generate_stream(stream_response):
-    """Generator function to stream Ollama responses"""
+    """Generator function to stream Groq responses"""
     try:
-        for line in stream_response.iter_lines():
-            if line:
-                chunk = json.loads(line)
-                if 'response' in chunk:
-                    yield chunk['response']
-                if chunk.get('done', False):
-                    break
+        for chunk in stream_response:
+            if chunk.choices[0].delta.content:
+                yield chunk.choices[0].delta.content
     except Exception as e:
         print(f"Stream error: {e}")
         yield ""
@@ -269,7 +253,7 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
             question=chat_request.message
         )
 
-        response = query_ollama(prompt, stream=False)
+        response = query_groq(prompt, stream=False)
 
         # Cache the response
         set_cached_response(chat_request.message, response)
@@ -316,7 +300,7 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
             question=chat_request.message
         )
 
-        stream_response = query_ollama(prompt, stream=True)
+        stream_response = query_groq(prompt, stream=True)
 
         if stream_response is None:
             async def error_stream():
@@ -332,7 +316,7 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
 @app.get("/health")
 async def health():
     # This will now respond instantly
-    return {"status": "healthy", "model": "phi"}
+    return {"status": "healthy", "model": "llama-3.1-8b-instant", "provider": "groq"}
 
 
 # --- ADD THIS BLOCK TO RUN THE SERVER ---

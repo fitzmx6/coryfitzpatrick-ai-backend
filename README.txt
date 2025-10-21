@@ -5,7 +5,7 @@ This is the backend server for an AI-powered chatbot designed to answer question
 It's built using a **Retrieval-Augmented Generation (RAG)** pipeline with **production optimizations**:
 
 - **Web Server:** FastAPI (Python 3.11+)
-- **LLM (Local):** Ollama running the `phi` model
+- **LLM:** Groq API with Llama 3.1 8B Instant (ultra-fast, free)
 - **Vector Database:** ChromaDB
 - **Embedding Model:** `all-MiniLM-L6-v2`
 - **Caching:** Redis (optional, with in-memory fallback)
@@ -14,7 +14,7 @@ It's built using a **Retrieval-Augmented Generation (RAG)** pipeline with **prod
 - **Streaming:** Fast response streaming for better UX
 - **Deployment:** Railway (via `nixpacks.toml`)
 
-**Performance:** 85-95% faster responses with streaming + caching
+**Performance:** Ultra-fast responses (<1s) with Groq + caching + streaming
 
 ---
 
@@ -74,53 +74,56 @@ pip install -r requirements.txt
 
 ---
 
-### Step 4: Install and Start Ollama
+### Step 4: Get a Free Groq API Key
 
-1. Download and run the installer from [https://ollama.com/download](https://ollama.com/download).  
-2. Ollama runs automatically as a service.
+1. Go to [https://console.groq.com](https://console.groq.com)
+2. Sign up for a free account
+3. Navigate to "API Keys" and create a new key
+4. Copy the API key
 
 ---
 
-### Step 5: Download AI Model
+### Step 5: Set Environment Variable
+
+#### Mac/Linux
 ```bash
-# In a new terminal (keep ollama serve running)
-ollama pull phi
+export GROQ_API_KEY="your-api-key-here"
 ```
-💡 *The `phi` model is fast and efficient for CPU-based inference.*
+
+#### Windows (PowerShell)
+```powershell
+$env:GROQ_API_KEY="your-api-key-here"
+```
+
+💡 *For permanent setup, add to your ~/.bashrc or ~/.zshrc (Mac/Linux)*
 
 ---
 
-### Step 6: Generate Vector Database
-```bash
-python prepare_data.py
-```
-✅ Expected output:  
-`Successfully stored [X] documents in vector database!`
-
----
-
-### Step 7: Start the Server
+### Step 6: Start the Server
 ```bash
 python server.py
 ```
 
 Expected output:
 ```
-Loading models...
-✅ Models and DB loaded!
+⏳ Loading embedding model...
+✅ Embedding model loaded in 2.3s
+⏳ Connecting to ChromaDB...
+✅ ChromaDB connected in 0.5s
+🚀 All models loaded! Total startup time: 2.8s
 🚀 Starting server on port 8000
 ```
 
 ---
 
-### Step 8: Test It
+### Step 7: Test It
 
 #### Test Health Endpoint
 ```bash
 curl http://localhost:8000/health
 ```
-Expected response:  
-`{"status": "healthy", "model": "phi"}`
+Expected response:
+`{"status": "healthy", "model": "llama-3.1-8b-instant", "provider": "groq"}`
 
 #### Test Chat Endpoint (Standard)
 ```bash
@@ -153,8 +156,9 @@ cd coryfitzpatrick-ai-backend
 source venv/bin/activate      # Mac/Linux
 venv\Scripts\activate         # Windows
 
-# 3. Make sure Ollama is running (in another terminal)
-ollama serve
+# 3. Set Groq API key (if not in your shell profile)
+export GROQ_API_KEY="your-api-key-here"  # Mac/Linux
+$env:GROQ_API_KEY="your-api-key-here"    # Windows
 
 # 4. Start the server
 python server.py
@@ -174,22 +178,24 @@ This project is configured for deployment on **Railway** using **Nixpacks**.
 ### Quick Deploy Overview:
 1. Push code to GitHub
 2. Create Railway project from GitHub repo
-3. **Add Redis plugin** (optional but recommended for caching)
-4. Generate domain
-5. Test endpoints
+3. **Add Environment Variable:** `GROQ_API_KEY` (get from https://console.groq.com)
+4. **Add Redis plugin** (optional but recommended for caching)
+5. Generate domain
+6. Test endpoints
 
 ### Key Files:
-- **nixpacks.toml:** Configures build (Python 3.11, Ollama, dependencies)
-- **start.sh:** Launches Ollama and FastAPI server
+- **nixpacks.toml:** Configures build (Python 3.11, dependencies)
+- **start.sh:** Launches FastAPI server
 - **railway.json:** Health check and restart policy
 
 ### Optimizations Included:
-✅ Streaming responses (2-3s perceived time)
+✅ Ultra-fast responses with Groq (<1s)
+✅ Streaming responses for better UX
 ✅ Redis caching (99%+ faster repeat queries)
 ✅ GZIP compression (70% smaller transfers)
 ✅ Rate limiting (20 req/min protection)
 ✅ Vector search filtering (better quality)
-✅ Fast cold starts (~30s)
+✅ Instant cold starts (~2-3s)
 
 > ⚙️ You don't need `nixpacks.toml` or `start.sh` for local development—only for production deployment.
 
