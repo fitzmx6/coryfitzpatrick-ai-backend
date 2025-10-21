@@ -13,11 +13,7 @@ cmds = [
     "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
     
     # 3. Install Ollama with retry logic
-    "for i in 1 2 3; do curl -fsSL https://ollama.com/install.sh | sh && break || sleep 10; done",
-    
-    # 4. Generate the vector database (do this during build to save startup time)
-    "echo 'Generating vector DB... this happens once during build'",
-    "/opt/venv/bin/python prepare_data.py"
+    "for i in 1 2 3; do curl -fsSL https://ollama.com/install.sh | sh && break || sleep 10; done"
 ]
 
 [start]
