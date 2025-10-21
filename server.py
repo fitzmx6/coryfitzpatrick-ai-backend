@@ -40,13 +40,20 @@ limiter = Limiter(key_func=get_remote_address)
 
 # This function runs when the app starts
 async def load_models(app: FastAPI):
-    print("Loading embedding model...")
+    import time
+    start_time = time.time()
+
+    print("⏳ Loading embedding model...")
     app.state.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
-    print("Connecting to ChromaDB...")
+    print(f"✅ Embedding model loaded in {time.time() - start_time:.2f}s")
+
+    print("⏳ Connecting to ChromaDB...")
     # UPDATED LINE TO DISABLE TELEMETRY
     app.state.chroma_client = chromadb.PersistentClient(path="./chroma_db", settings=Settings(anonymized_telemetry=False))
     app.state.collection = app.state.chroma_client.get_collection("cory_profile")
-    print("✅ Models and DB loaded!")
+    print(f"✅ ChromaDB connected in {time.time() - start_time:.2f}s")
+
+    print(f"🚀 All models loaded! Total startup time: {time.time() - start_time:.2f}s")
 
 # This function runs when the app shuts down
 async def close_models(app: FastAPI):
