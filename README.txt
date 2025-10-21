@@ -118,6 +118,19 @@ Expected output:
 
 ### Step 7: Test It
 
+#### Test Root Endpoint (Service Info)
+```bash
+curl http://localhost:8000/
+```
+Expected response:
+```json
+{
+  "service": "Cory Fitzpatrick AI Portfolio Chatbot",
+  "status": "online",
+  "endpoints": {...}
+}
+```
+
 #### Test Health Endpoint
 ```bash
 curl http://localhost:8000/health
@@ -141,6 +154,7 @@ curl -X POST http://localhost:8000/api/chat/stream \
 ```
 
 Or open in your browser:
+👉 [http://localhost:8000/](http://localhost:8000/)
 👉 [http://localhost:8000/health](http://localhost:8000/health)
 
 ---
