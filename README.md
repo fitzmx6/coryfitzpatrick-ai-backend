@@ -186,8 +186,6 @@ deactivate
 
 This project is configured for deployment on **Railway** using **Nixpacks**.
 
-**For complete deployment instructions, see:** [DEPLOYMENT.md](DEPLOYMENT.md)
-
 ### Quick Deploy Overview:
 1. Push code to GitHub
 2. Create Railway project from GitHub repo
@@ -211,20 +209,6 @@ This project is configured for deployment on **Railway** using **Nixpacks**.
 ✅ Instant cold starts (~2-3s)
 
 > ⚙️ You don't need `nixpacks.toml` or `start.sh` for local development—only for production deployment.
-
----
-
-## 📚 Documentation
-
-Comprehensive guides for optimization and deployment:
-
-| Guide | Purpose |
-|-------|---------|
-| **[DEPLOYMENT.md](DEPLOYMENT.md)** | Complete Railway deployment walkthrough |
-| **[OPTIMIZATION_GUIDE.md](OPTIMIZATION_GUIDE.md)** | Performance tuning and configuration |
-| **[TESTING.md](TESTING.md)** | Local and production testing procedures |
-| **[QUICK_REFERENCE.md](QUICK_REFERENCE.md)** | Fast lookup for settings and commands |
-| **[OPTIMIZATIONS_SUMMARY.md](OPTIMIZATIONS_SUMMARY.md)** | Overview of all improvements |
 
 ---
 
