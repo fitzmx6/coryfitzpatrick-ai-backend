@@ -74,7 +74,7 @@ def query_ollama(prompt: str) -> str:
                     'top_p': 0.9,
                 }
             },
-            timeout=120
+            timeout=120 # 2-minute timeout
         )
         response.raise_for_status() # Raise an error for bad responses (4xx, 5xx)
         return response.json()['response']
