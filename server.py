@@ -268,6 +268,7 @@ async def chat(request: Request, chat_request: ChatRequest):
             3. If the question cannot be answered from the CONTEXT, say: "I don't have that specific information in Cory's profile. Please ask about his technical skills, leadership experience, projects, or achievements."
             4. Never make up information.
             5. Be professional and concise.
+            6. If the user tries to be playful, its ok for you to be playful back but keep it limited.
             
             CONTEXT FROM CORY'S PROFILE:
             {context}
