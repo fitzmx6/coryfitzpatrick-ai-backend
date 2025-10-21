@@ -7,8 +7,7 @@ python-multipart==0.0.6
 pydantic==2.5.0
 pydantic-core==2.14.1
 
-# HTTP and caching
-requests==2.31.0
+# Caching
 redis==5.0.1
 
 # Rate limiting
