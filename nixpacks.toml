@@ -7,9 +7,10 @@ nixPkgs = ["curl", "bash", "python311"]
 cmds = [
     # 1. Create the Python virtual environment
     "python3.11 -m venv /opt/venv",
-    
-    # 2. Install all our Python packages
-    "/opt/venv/bin/pip install -r requirements.txt",
+
+    # 2. Upgrade pip and install all our Python packages
+    "/opt/venv/bin/pip install --upgrade pip",
+    "/opt/venv/bin/pip install --no-cache-dir -r requirements.txt",
     
     # 3. Install Ollama with retry logic
     "for i in 1 2 3; do curl -fsSL https://ollama.com/install.sh | sh && break || sleep 10; done",
