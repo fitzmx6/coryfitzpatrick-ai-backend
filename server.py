@@ -127,14 +127,22 @@ class ChatResponse(BaseModel):
 
 # --- Core Functions ---
 
-def query_groq(prompt: str, stream: bool = False):
-    """Send prompt to Groq API with optional streaming"""
+def query_groq(prompt: str, conversation_history: list = None, stream: bool = False):
+    """Send prompt to Groq API with optional conversation history and streaming"""
     try:
+        # Build messages list with conversation history
+        messages = []
+
+        # Add conversation history if provided
+        if conversation_history:
+            messages.extend(conversation_history)
+
+        # Add current prompt
+        messages.append({"role": "user", "content": prompt})
+
         response = groq_client.chat.completions.create(
             model="llama-3.1-8b-instant",  # Fast, high-quality model
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
+            messages=messages,
             temperature=0.3,
             max_tokens=500,
             top_p=0.9,
@@ -272,7 +280,16 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
             question=chat_request.message
         )
 
-        response = query_groq(prompt, stream=False)
+        # Build conversation history with system context
+        conversation_history = [
+            {"role": "system", "content": prompt}
+        ]
+
+        # Add previous conversation if provided
+        if chat_request.conversation_history:
+            conversation_history.extend(chat_request.conversation_history)
+
+        response = query_groq(chat_request.message, conversation_history=conversation_history, stream=False)
 
         # Cache the response
         set_cached_response(chat_request.message, response)
@@ -319,7 +336,16 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
             question=chat_request.message
         )
 
-        stream_response = query_groq(prompt, stream=True)
+        # Build conversation history with system context
+        conversation_history = [
+            {"role": "system", "content": prompt}
+        ]
+
+        # Add previous conversation if provided
+        if chat_request.conversation_history:
+            conversation_history.extend(chat_request.conversation_history)
+
+        stream_response = query_groq(chat_request.message, conversation_history=conversation_history, stream=True)
 
         if stream_response is None:
             async def error_stream():
