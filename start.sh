@@ -24,19 +24,18 @@ while ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; do
     sleep 1
 done
 
-echo "✅ Ollama is ready! Pre-warming 'phi' model..."
+echo "✅ Ollama is ready! Pre-warming 'phi' model (this may take ~2 minutes)..."
 
 # 3. Pre-warm the model by sending a dummy request
-# This forces Ollama to load the model into RAM before Uvicorn starts.
-# This will make the startup slower, but the first API request fast.
-curl -s http://localhost:11434/api/generate \
-  -d '{
-        "model": "phi",
-        "prompt": "hello",
-        "stream": false
-      }' > /dev/null
+# We add a 150-second timeout and '|| true' so that 'set -e'
+# does NOT kill the script if the pre-warming fails.
+# The server will start anyway, and the first API request will just be slow.
+curl -X POST http://localhost:11434/api/generate \
+     -H "Content-Type: application/json" \
+     --max-time 150 \
+     -d '{ "model": "phi", "prompt": "hello", "stream": false }' || true
 
-echo "✅ Model is pre-warmed!"
+echo "✅ Model pre-warm attempt complete! Starting server..."
 
 # 4. Start FastAPI server (it will take over)
 echo "🚀 Starting FastAPI server on port ${PORT:-8080}..."
