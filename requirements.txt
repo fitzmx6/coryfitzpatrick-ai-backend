@@ -1,12 +1,23 @@
+# Web framework
 fastapi==0.104.1
-uvicorn==0.24.0
-langchain==0.1.0
-langchain-community==0.0.10
-chromadb==0.4.18
-sentence-transformers==2.7.0
+uvicorn[standard]==0.24.0
+python-multipart==0.0.6
+
+# Data validation
 pydantic==2.5.0
 pydantic-core==2.14.1
+
+# HTTP and caching
 requests==2.31.0
-python-multipart==0.0.6
 redis==5.0.1
+
+# Rate limiting
 slowapi==0.1.9
+
+# Install PyTorch CPU-only (much smaller, no CUDA)
+--extra-index-url https://download.pytorch.org/whl/cpu
+torch==2.1.0+cpu
+
+# Vector DB and embeddings
+chromadb==0.4.18
+sentence-transformers==2.7.0
