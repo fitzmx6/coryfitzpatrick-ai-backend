@@ -115,7 +115,6 @@ Expected output:
 ```
 
 ---
-
 ### Step 7: Test It
 
 #### Test Root Endpoint (Service Info)

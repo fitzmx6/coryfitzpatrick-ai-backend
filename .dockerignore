@@ -32,7 +32,7 @@ Thumbs.db
 
 # Documentation and logs (not needed in container)
 *.md
-README.txt
+README.md
 docs/
 *.log
 logs.*.log
