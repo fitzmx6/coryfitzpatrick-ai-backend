@@ -43,10 +43,6 @@ tests/
 test_*.py
 *_test.py
 
-# Local database (if you generated it locally)
-# Remove this line if you want to upload pre-built database
-chroma_db/
-
 # Local development files
 .env
 .env.local
