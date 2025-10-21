@@ -12,11 +12,23 @@ import json
 import os
 from contextlib import asynccontextmanager
 from functools import lru_cache
+from pathlib import Path
 import hashlib
 import redis
 from slowapi import Limiter, _rate_limit_exceeded_handler
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+
+# Load environment variables from .env file if it exists
+env_file = Path(__file__).parent / ".env"
+if env_file.exists():
+    print("Loading environment variables from .env file...")
+    with open(env_file) as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, value = line.split("=", 1)
+                os.environ.setdefault(key.strip(), value.strip())
 
 # --- Redis Cache Setup ---
 # Try to connect to Redis if REDIS_URL is available, otherwise use in-memory caching
@@ -34,7 +46,14 @@ except Exception as e:
     redis_client = None
 
 # --- Groq Client Setup ---
-groq_client = Groq(api_key=os.environ.get("GROQ_API_KEY"))
+groq_api_key = os.environ.get("GROQ_API_KEY")
+if not groq_api_key:
+    raise ValueError(
+        "GROQ_API_KEY environment variable is not set!\n"
+        "Get a free API key from https://console.groq.com\n"
+        "Then set it with: export GROQ_API_KEY='your-key-here'"
+    )
+groq_client = Groq(api_key=groq_api_key)
 
 # --- Rate Limiter Setup ---
 limiter = Limiter(key_func=get_remote_address)

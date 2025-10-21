@@ -2,3 +2,6 @@
 venv/
 *.iml
 .idea/
+
+# Environment variables (contains API keys)
+.env
