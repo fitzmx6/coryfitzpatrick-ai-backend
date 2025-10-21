@@ -1,7 +1,7 @@
 # prepare_data.py
 import json
 import chromadb
-from chromadb.config import Settings
+from chromadb.config import Settings # <-- ADD THIS IMPORT
 from sentence_transformers import SentenceTransformer
 
 def prepare_training_data():
@@ -13,7 +13,8 @@ def prepare_training_data():
     
     # Initialize ChromaDB (persistent storage)
     print("Initializing ChromaDB...")
-    client = chromadb.PersistentClient(path="./chroma_db")
+    # UPDATED LINE TO DISABLE TELEMETRY
+    client = chromadb.PersistentClient(path="./chroma_db", settings=Settings(anonymized_telemetry=False))
     
     # Create or get collection
     try:

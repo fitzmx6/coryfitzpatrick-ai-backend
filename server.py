@@ -3,6 +3,7 @@ from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
 import chromadb
+from chromadb.config import Settings # <-- ADD THIS IMPORT
 from sentence_transformers import SentenceTransformer
 import requests
 import json
@@ -16,7 +17,8 @@ async def load_models(app: FastAPI):
     print("Loading embedding model...")
     app.state.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
     print("Connecting to ChromaDB...")
-    app.state.chroma_client = chromadb.PersistentClient(path="./chroma_db")
+    # UPDATED LINE TO DISABLE TELEMETRY
+    app.state.chroma_client = chromadb.PersistentClient(path="./chroma_db", settings=Settings(anonymized_telemetry=False))
     app.state.collection = app.state.chroma_client.get_collection("cory_profile")
     print("✅ Models and DB loaded!")
 
@@ -64,7 +66,7 @@ def query_ollama(prompt: str) -> str:
         response = requests.post(
             'http://localhost:11434/api/generate',
             json={
-                'model': 'phi',  # <-- CORRECTED: Was 'phi'
+                'model': 'phi',  # Using the phi model
                 'prompt': prompt,
                 'stream': False,
                 'options': {
@@ -149,7 +151,7 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
 @app.get("/health")
 async def health():
     # This will now respond instantly
-    return {"status": "healthy", "model": "phi"} # <-- CORRECTED: Was 'phi'
+    return {"status": "healthy", "model": "phi"}
 
 
 # --- ADD THIS BLOCK TO RUN THE SERVER ---

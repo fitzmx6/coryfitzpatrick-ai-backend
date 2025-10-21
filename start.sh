@@ -7,14 +7,25 @@ echo "=== Starting Services ==="
 echo "Starting Ollama service..."
 ollama serve > /tmp/ollama.log 2>&1 &
 
-# 2. Wait for Ollama to be ready
+# 2. Wait for Ollama to be FULLY ready
 echo "Waiting for Ollama to initialize..."
-while ! curl -s http://localhost:11434/ > /dev/null 2>&1; do
-   echo "Waiting for Ollama..."
-   sleep 1
+max_attempts=60 # Wait for up to 60 seconds
+attempt=0
+while ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; do
+    attempt=$((attempt + 1))
+    if [ $attempt -ge $max_attempts ]; then
+        echo "ERROR: Ollama failed to start after 60 seconds."
+        echo "--- Ollama Log Dump ---"
+        cat /tmp/ollama.log
+        echo "-----------------------"
+        exit 1
+    fi
+    echo "Waiting for Ollama... (Attempt $attempt/$max_attempts)"
+    sleep 1
 done
-echo "✅ Ollama is ready!"
 
-# 3. Start FastAPI server (using the port Railway provides)
+echo "✅ Ollama is ready and responding to /api/tags!"
+
+# 3. Start FastAPI server (it will take over)
 echo "🚀 Starting FastAPI server on port ${PORT:-8080}..."
 exec uvicorn server:app --host 0.0.0.0 --port ${PORT:-8080}
