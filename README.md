@@ -30,7 +30,7 @@ cd coryfitzpatrick-ai-backend
 
 ### Step 2: Create and Activate Python Virtual Environment
 
-**IMPORTANT:** This project requires **Python 3.11+** (uses modern type hints)
+**IMPORTANT:** This project requires **Python 3.11+**
 
 #### On Mac/Linux
 ```bash
