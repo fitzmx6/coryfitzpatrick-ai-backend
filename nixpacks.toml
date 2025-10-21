@@ -15,22 +15,8 @@ cmds = [
     # 3. Install Ollama with retry logic
     "for i in 1 2 3; do curl -fsSL https://ollama.com/install.sh | sh && break || sleep 10; done",
     
-    # 4. Start Ollama, pull the model, then stop Ollama
-    # This MUST be one command to run in the same build layer
-    """
-    echo 'Starting Ollama service in background...' && \
-    ollama serve & \
-    OLLAMA_PID=$! && \
-    echo 'Waiting for Ollama to be ready...' && \
-    while ! curl -s http://localhost:11434/ > /dev/null; do sleep 1; done && \
-    echo 'Ollama is ready. Pulling model: phi' && \
-    ollama pull phi && \
-    echo 'Model pulled. Stopping Ollama service...' && \
-    kill $OLLAMA_PID
-    """,
-
-    # 5. Generate the vector database
-    "echo 'Generating vector DB... this also happens once during build'",
+    # 4. Generate the vector database (do this during build to save startup time)
+    "echo 'Generating vector DB... this happens once during build'",
     "/opt/venv/bin/python prepare_data.py"
 ]
 

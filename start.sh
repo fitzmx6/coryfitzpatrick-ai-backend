@@ -24,9 +24,15 @@ while ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; do
     sleep 1
 done
 
-echo "✅ Ollama is ready! Pre-warming 'phi' model (optimized warm-up)..."
+echo "✅ Ollama is ready! Pulling 'phi' model if not already present..."
 
-# 3. Pre-warm the model with a minimal request (faster than full generation)
+# 3. Pull the phi model (only downloads if not cached)
+# This runs at startup instead of build time to avoid build timeouts
+ollama pull phi
+
+echo "✅ Model ready! Pre-warming with test request..."
+
+# 4. Pre-warm the model with a minimal request (faster than full generation)
 # Using a very short prompt and low token limit to speed up warm-up
 # We add a 60-second timeout and '|| true' so that 'set -e'
 # does NOT kill the script if the pre-warming fails.
