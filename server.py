@@ -363,6 +363,22 @@ async def health():
     # This will now respond instantly
     return {"status": "healthy", "model": "llama-3.1-8b-instant", "provider": "groq"}
 
+@app.get("/")
+async def root():
+    """Root endpoint with service status and info"""
+    return {
+        "service": "Cory Fitzpatrick AI Portfolio Chatbot",
+        "status": "online",
+        "endpoints": {
+            "health": "/health",
+            "chat": "/api/chat (POST)",
+            "chat_stream": "/api/chat/stream (POST)"
+        },
+        "note": "If you're seeing this, the service is running. If the service is down, it likely means Railway credits have been exhausted. Contact Cory for updates.",
+        "model": "llama-3.1-8b-instant",
+        "provider": "groq"
+    }
+
 
 # --- ADD THIS BLOCK TO RUN THE SERVER ---
 if __name__ == "__main__":
