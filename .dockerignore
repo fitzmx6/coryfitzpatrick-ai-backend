@@ -1,0 +1,49 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+
+# Virtual environments
+venv/
+env/
+ENV/
+.venv
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+*.iml
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+Thumbs.db
+
+# Git
+.git/
+.gitignore
+.gitattributes
+
+# Documentation and logs (not needed in container)
+*.md
+README.txt
+docs/
+*.log
+logs.*.log
+
+# Test files
+tests/
+test_*.py
+*_test.py
+*.ipynb
+.ipynb_checkpoints/
+
+# Local development
+.env
+.env.local
