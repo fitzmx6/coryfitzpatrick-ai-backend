@@ -260,8 +260,8 @@ python server.py
 
 ## 🧠 Summary
 
-This project demonstrates how to build a personal AI-driven portfolio using a RAG pipeline.  
-It blends **local inference (Ollama)**, **semantic retrieval (ChromaDB)**, and **FastAPI** for a fast, private, and interactive experience.  
+This project demonstrates how to build a personal AI-driven portfolio using a RAG pipeline.
+It blends **cloud-based LLM inference (Groq)**, **semantic retrieval (ChromaDB)**, and **FastAPI** for ultra-fast, production-ready responses.
 
-Built with ❤️ by **Cory Fitzpatrick**  
+Built with ❤️ by **Cory Fitzpatrick**
 [www.coryfitzpatrick.com](http://www.coryfitzpatrick.com)
