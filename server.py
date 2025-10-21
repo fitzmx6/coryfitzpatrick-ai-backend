@@ -1,6 +1,8 @@
 # server.py
 from fastapi import FastAPI, HTTPException, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.middleware.gzip import GZipMiddleware
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 import chromadb
 from chromadb.config import Settings # <-- ADD THIS IMPORT
@@ -9,6 +11,30 @@ import requests
 import json
 import os
 from contextlib import asynccontextmanager
+from functools import lru_cache
+import hashlib
+import redis
+from slowapi import Limiter, _rate_limit_exceeded_handler
+from slowapi.util import get_remote_address
+from slowapi.errors import RateLimitExceeded
+
+# --- Redis Cache Setup ---
+# Try to connect to Redis if REDIS_URL is available, otherwise use in-memory caching
+redis_client = None
+try:
+    redis_url = os.environ.get("REDIS_URL", None)
+    if redis_url:
+        redis_client = redis.from_url(redis_url, decode_responses=True)
+        redis_client.ping()  # Test connection
+        print("✅ Connected to Redis cache")
+    else:
+        print("ℹ️  No REDIS_URL found, using in-memory caching only")
+except Exception as e:
+    print(f"⚠️  Redis connection failed: {e}. Using in-memory caching only.")
+    redis_client = None
+
+# --- Rate Limiter Setup ---
+limiter = Limiter(key_func=get_remote_address)
 
 # --- Model Loading with Lifespan ---
 
@@ -25,7 +51,12 @@ async def load_models(app: FastAPI):
 # This function runs when the app shuts down
 async def close_models(app: FastAPI):
     print("Closing resources...")
-    pass
+    if redis_client:
+        try:
+            redis_client.close()
+            print("✅ Redis connection closed")
+        except Exception as e:
+            print(f"Error closing Redis: {e}")
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -38,6 +69,10 @@ async def lifespan(app: FastAPI):
 # Pass the lifespan manager to your FastAPI app
 app = FastAPI(lifespan=lifespan)
 
+# --- Add Rate Limiter to App ---
+app.state.limiter = limiter
+app.add_exception_handler(RateLimitExceeded, _rate_limit_exceeded_handler)
+
 # --- End Model Loading ---
 
 # Enable CORS
@@ -48,6 +83,9 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+# Enable GZIP compression for faster response transfers
+app.add_middleware(GZipMiddleware, minimum_size=1000)
 
 # --- Pydantic Models ---
 
@@ -60,65 +98,149 @@ class ChatResponse(BaseModel):
 
 # --- Core Functions ---
 
-def query_ollama(prompt: str) -> str:
-    """Send prompt to local Ollama instance"""
+def query_ollama(prompt: str, stream: bool = False):
+    """Send prompt to local Ollama instance with optional streaming"""
     try:
         response = requests.post(
             'http://localhost:11434/api/generate',
             json={
                 'model': 'phi',  # Using the phi model
                 'prompt': prompt,
-                'stream': False,
+                'stream': stream,
                 'options': {
                     'temperature': 0.3,
                     'top_p': 0.9,
                 }
             },
-            timeout=120 # 2-minute timeout
+            timeout=90,  # 90-second timeout (Railway hobby has ~100s request limit)
+            stream=stream  # Enable streaming at HTTP level
         )
-        response.raise_for_status() # Raise an error for bad responses (4xx, 5xx)
-        return response.json()['response']
+        response.raise_for_status()  # Raise an error for bad responses (4xx, 5xx)
+
+        if stream:
+            return response  # Return the streaming response object
+        else:
+            return response.json()['response']
+    except requests.Timeout:
+        print(f"Ollama request timed out after 90 seconds")
+        if stream:
+            return None
+        return "The response took too long to generate. Please try rephrasing your question to be more specific."
+    except requests.ConnectionError as e:
+        print(f"Ollama connection failed: {e}")
+        if stream:
+            return None
+        return "Sorry, I'm having trouble connecting to the AI model right now. Please try again in a moment."
     except requests.RequestException as e:
         print(f"Ollama request failed: {e}")
-        return "Sorry, I'm having trouble connecting to the AI model right now."
+        if stream:
+            return None
+        return "Sorry, an error occurred while processing your request. Please try again."
 
 
-def get_relevant_context(request: Request, query: str, n_results: int = 5) -> str:
-    """Search vector database for relevant information"""
-    
+@lru_cache(maxsize=128)
+def get_query_hash(query: str) -> str:
+    """Generate a hash for the query to use as cache key"""
+    return hashlib.md5(query.lower().strip().encode()).hexdigest()
+
+def get_cached_response(query: str) -> str | None:
+    """Get cached response from Redis if available"""
+    if not redis_client:
+        return None
+
+    try:
+        cache_key = f"chat:{get_query_hash(query)}"
+        cached = redis_client.get(cache_key)
+        if cached:
+            print(f"✅ Cache hit for query hash: {get_query_hash(query)[:8]}...")
+            return cached
+    except Exception as e:
+        print(f"Redis get error: {e}")
+
+    return None
+
+def set_cached_response(query: str, response: str, ttl: int = 3600):
+    """Cache response in Redis with TTL (default 1 hour)"""
+    if not redis_client:
+        return
+
+    try:
+        cache_key = f"chat:{get_query_hash(query)}"
+        redis_client.setex(cache_key, ttl, response)
+        print(f"✅ Cached response for query hash: {get_query_hash(query)[:8]}...")
+    except Exception as e:
+        print(f"Redis set error: {e}")
+
+def get_relevant_context(request: Request, query: str, n_results: int = 5, min_similarity: float = 0.3) -> str:
+    """Search vector database for relevant information with caching"""
+
     # Get models from app.state
     embedding_model = request.app.state.embedding_model
     collection = request.app.state.collection
-    
+
+    # Encode query to embedding
     query_embedding = embedding_model.encode([query]).tolist()
-    
+
+    # Query ChromaDB with similarity filtering
     results = collection.query(
         query_embeddings=query_embedding,
         n_results=n_results
     )
-    
+
     if not results['documents'][0]:
         return ""
-    
+
+    # Filter by similarity distance (lower is better, typically 0-2 range)
+    # Only include results with distance < threshold (more relevant results)
     context_parts = []
-    for doc, metadata in zip(results['documents'][0], results['metadatas'][0]):
+    distances = results.get('distances', [[]])[0] if 'distances' in results else []
+
+    for idx, (doc, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
+        # Skip low-quality matches if distance data is available
+        if distances and idx < len(distances):
+            # Convert distance to similarity (inverse relationship)
+            # Typical distance range is 0-2, lower is better
+            if distances[idx] > 1.5:  # Skip very dissimilar results
+                continue
+
         # Using 'answer' as the primary context, as 'question' is in metadata
         context_parts.append(f"Q: {metadata.get('question', '')}\nA: {metadata.get('answer', doc)}")
-    
+
     return "\n\n".join(context_parts)
 
 # --- API Endpoints ---
 
-@app.post("/api/chat", response_model=ChatResponse)
-async def chat(fastapi_request: Request, chat_request: ChatRequest):
+def generate_stream(stream_response):
+    """Generator function to stream Ollama responses"""
     try:
-        context = get_relevant_context(fastapi_request, chat_request.message, n_results=5)
-        
+        for line in stream_response.iter_lines():
+            if line:
+                chunk = json.loads(line)
+                if 'response' in chunk:
+                    yield chunk['response']
+                if chunk.get('done', False):
+                    break
+    except Exception as e:
+        print(f"Stream error: {e}")
+        yield ""
+
+@app.post("/api/chat", response_model=ChatResponse)
+@limiter.limit("20/minute")  # 20 requests per minute per IP
+async def chat(request: Request, chat_request: ChatRequest):
+    """Non-streaming chat endpoint with Redis caching and rate limiting"""
+    try:
+        # Check cache first
+        cached_response = get_cached_response(chat_request.message)
+        if cached_response:
+            return ChatResponse(response=cached_response)
+
+        context = get_relevant_context(request, chat_request.message, n_results=5)
+
         if not context:
             return ChatResponse(
                 response="I can only answer questions about Cory Fitzpatrick's professional experience, skills, and achievements. Please ask about his background, technical expertise, or leadership experience."
             )
-        
+
         system_prompt = """You are an AI assistant for Cory Fitzpatrick's professional portfolio. Your purpose is to help employers learn about Cory's qualifications for Software Engineering Manager and Tech Lead positions.
 
 CRITICAL RULES:
@@ -139,13 +261,65 @@ Provide a helpful, accurate answer based ONLY on the context above:"""
             context=context,
             question=chat_request.message
         )
-        
-        response = query_ollama(prompt)
-        
+
+        response = query_ollama(prompt, stream=False)
+
+        # Cache the response
+        set_cached_response(chat_request.message, response)
+
         return ChatResponse(response=response)
-        
+
     except Exception as e:
         print(f"Error in /api/chat: {str(e)}")
+        raise HTTPException(status_code=500, detail="An internal server error occurred.")
+
+@app.post("/api/chat/stream")
+@limiter.limit("20/minute")  # 20 requests per minute per IP
+async def chat_stream(request: Request, chat_request: ChatRequest):
+    """Streaming chat endpoint with rate limiting (no caching for streams)"""
+    try:
+        # Note: Streaming responses are not cached (harder to cache streams)
+        # If you need cached streaming, convert cached response to async generator
+
+        context = get_relevant_context(request, chat_request.message, n_results=5)
+
+        if not context:
+            async def error_stream():
+                yield "I can only answer questions about Cory Fitzpatrick's professional experience, skills, and achievements. Please ask about his background, technical expertise, or leadership experience."
+            return StreamingResponse(error_stream(), media_type="text/plain")
+
+        system_prompt = """You are an AI assistant for Cory Fitzpatrick's professional portfolio. Your purpose is to help employers learn about Cory's qualifications for Software Engineering Manager and Tech Lead positions.
+
+CRITICAL RULES:
+1. ONLY answer questions about Cory's professional background, skills, experience, and achievements.
+2. ONLY use information from the CONTEXT provided below.
+3. If the question cannot be answered from the CONTEXT, say: "I don't have that specific information in Cory's profile. Please ask about his technical skills, leadership experience, projects, or achievements."
+4. Never make up information.
+5. Be professional and concise.
+
+CONTEXT FROM CORY'S PROFILE:
+{context}
+
+USER QUESTION: {question}
+
+Provide a helpful, accurate answer based ONLY on the context above:"""
+
+        prompt = system_prompt.format(
+            context=context,
+            question=chat_request.message
+        )
+
+        stream_response = query_ollama(prompt, stream=True)
+
+        if stream_response is None:
+            async def error_stream():
+                yield "Sorry, I'm having trouble connecting to the AI model right now."
+            return StreamingResponse(error_stream(), media_type="text/plain")
+
+        return StreamingResponse(generate_stream(stream_response), media_type="text/plain")
+
+    except Exception as e:
+        print(f"Error in /api/chat/stream: {str(e)}")
         raise HTTPException(status_code=500, detail="An internal server error occurred.")
 
 @app.get("/health")

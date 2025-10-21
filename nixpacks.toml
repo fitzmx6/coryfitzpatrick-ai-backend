@@ -1,12 +1,12 @@
 # nixpacks.toml
 
 [phases.setup]
-nixPkgs = ["curl", "bash", "python39"]
+nixPkgs = ["curl", "bash", "python311"]
 
 [phases.install]
 cmds = [
     # 1. Create the Python virtual environment
-    "python3.9 -m venv /opt/venv",
+    "python3.11 -m venv /opt/venv",
     
     # 2. Install all our Python packages
     "/opt/venv/bin/pip install -r requirements.txt",

@@ -24,16 +24,17 @@ while ! curl -s http://localhost:11434/api/tags > /dev/null 2>&1; do
     sleep 1
 done
 
-echo "✅ Ollama is ready! Pre-warming 'phi' model (this may take ~2 minutes)..."
+echo "✅ Ollama is ready! Pre-warming 'phi' model (optimized warm-up)..."
 
-# 3. Pre-warm the model by sending a dummy request
-# We add a 150-second timeout and '|| true' so that 'set -e'
+# 3. Pre-warm the model with a minimal request (faster than full generation)
+# Using a very short prompt and low token limit to speed up warm-up
+# We add a 60-second timeout and '|| true' so that 'set -e'
 # does NOT kill the script if the pre-warming fails.
 # The server will start anyway, and the first API request will just be slow.
 curl -X POST http://localhost:11434/api/generate \
      -H "Content-Type: application/json" \
-     --max-time 150 \
-     -d '{ "model": "phi", "prompt": "hello", "stream": false }' || true
+     --max-time 60 \
+     -d '{ "model": "phi", "prompt": "hi", "stream": false, "options": {"num_predict": 5} }' || true
 
 echo "✅ Model pre-warm attempt complete! Starting server..."
 
