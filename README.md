@@ -18,6 +18,37 @@ It's built using a **Retrieval-Augmented Generation (RAG)** pipeline with **prod
 
 ---
 
+## ⚡ TL;DR - Quick Start
+
+Already have everything installed? Here are the essential commands:
+
+```bash
+# 1. Prepare the vector database (first time only)
+cory-ai-prepare-data
+
+# 2. Start the backend server (leave running)
+cory-ai-server
+
+# 3. In a new terminal, start the interactive chatbot
+cory-ai-chatbot
+```
+
+**Alternative using Python module syntax:**
+```bash
+# 1. Prepare data
+python -m cory_ai_chatbot.prepare_data
+
+# 2. Start server
+python -m cory_ai_chatbot.server
+
+# 3. Start chatbot
+python -m cory_ai_chatbot.cli
+```
+
+Need to set up from scratch? Continue to the full setup guide below.
+
+---
+
 ## 🚀 Local Development Setup
 
 ### Step 1: Clone the Repository
@@ -65,12 +96,19 @@ python --version
 
 ---
 
-### Step 3: Install Dependencies
+### Step 3: Install the Package
 ```bash
 # Make sure you're in the venv (you should see (venv) in your prompt)
 pip install --upgrade pip
-pip install -r requirements.txt
+
+# Install in editable/development mode
+pip install -e .
+
+# Or for development with testing tools
+pip install -e ".[dev]"
 ```
+
+This installs the `cory-ai-chatbot` package and all dependencies.
 
 ---
 
@@ -99,10 +137,26 @@ $env:GROQ_API_KEY="your-api-key-here"
 
 ---
 
-### Step 6: Start the Server
+### Step 6: Prepare Training Data (First Time Only)
 ```bash
-python server.py
+# Run this once to create the vector database from training data
+cory-ai-prepare-data
 ```
+
+This will create the ChromaDB vector database in `data/chroma_db/`.
+
+---
+
+### Step 7: Start the FastAPI Server
+```bash
+# Option 1: Using the CLI command (recommended)
+cory-ai-server
+
+# Option 2: Using Python module
+python -m cory_ai_chatbot.server
+```
+
+**Note:** This starts the **backend API server**. Leave this running in your terminal.
 
 Expected output:
 ```
@@ -115,46 +169,15 @@ Expected output:
 ```
 
 ---
-### Step 7: Test It
 
-#### Test Root Endpoint (Service Info)
-```bash
-curl http://localhost:8000/
-```
-Expected response:
-```json
-{
-  "service": "Cory Fitzpatrick AI Portfolio Chatbot",
-  "status": "online",
-  "endpoints": {...}
-}
-```
+### Step 8: Test It
 
-#### Test Health Endpoint
-```bash
-curl http://localhost:8000/health
-```
-Expected response:
-`{"status": "healthy", "model": "llama-3.1-8b-instant", "provider": "groq"}`
+#### Interactive Chat Client (Best Way to Test)
 
-#### Test Chat Endpoint (Standard)
-```bash
-curl -X POST http://localhost:8000/api/chat \
-     -H "Content-Type: application/json" \
-     -d '{"message": "What is Corys experience at J&J?"}'
-```
+**Important:** Make sure the server is running first (from Step 7). Then, in a **new terminal window**:
 
-#### Test Streaming Endpoint (Recommended - Faster UX)
 ```bash
-curl -X POST http://localhost:8000/api/chat/stream \
-     -H "Content-Type: application/json" \
-     -d '{"message": "What are Corys technical skills?"}' \
-     --no-buffer
-```
-
-#### Interactive Chat Client (Best for Testing)
-```bash
-python chat_client.py
+cory-ai-chatbot
 ```
 
 This will start an interactive chat session where you can:
@@ -175,9 +198,97 @@ You: quit
 Goodbye! Thanks for chatting!
 ```
 
-Or open in your browser:
-👉 [http://localhost:8000/](http://localhost:8000/)
-👉 [http://localhost:8000/health](http://localhost:8000/health)
+---
+
+#### Alternative: Test with curl Commands
+
+#### Test Root Endpoint (Service Info)
+
+**Local:**
+```bash
+curl http://localhost:8000/
+```
+
+**Production:**
+```bash
+curl https://coryfitzpatrick-ai-backend-production.up.railway.app/
+```
+
+Expected response:
+```json
+{
+  "service": "Cory Fitzpatrick AI Portfolio Chatbot",
+  "status": "online",
+  "endpoints": {
+    "health": "/health",
+    "chat": "/api/chat (POST)",
+    "chat_stream": "/api/chat/stream (POST)"
+  },
+  "model": "llama-3.1-8b-instant",
+  "provider": "groq"
+}
+```
+
+#### Test Health Endpoint
+
+**Local:**
+```bash
+curl http://localhost:8000/health
+```
+
+**Production:**
+```bash
+curl https://coryfitzpatrick-ai-backend-production.up.railway.app/health
+```
+
+Expected response:
+```json
+{"status": "healthy", "model": "llama-3.1-8b-instant", "provider": "groq"}
+```
+
+#### Test Chat Endpoint (Standard)
+
+**Local:**
+```bash
+curl -X POST http://localhost:8000/api/chat \
+     -H "Content-Type: application/json" \
+     -d '{"message": "What is Corys experience at J&J?"}'
+```
+
+**Production:**
+```bash
+curl -X POST https://coryfitzpatrick-ai-backend-production.up.railway.app/api/chat \
+     -H "Content-Type: application/json" \
+     -d '{"message": "What is Corys experience at J&J?"}'
+```
+
+#### Test Streaming Endpoint (Recommended - Faster UX)
+
+**Local:**
+```bash
+curl -X POST http://localhost:8000/api/chat/stream \
+     -H "Content-Type: application/json" \
+     -d '{"message": "What are Corys technical skills?"}' \
+     --no-buffer
+```
+
+**Production:**
+```bash
+curl -X POST https://coryfitzpatrick-ai-backend-production.up.railway.app/api/chat/stream \
+     -H "Content-Type: application/json" \
+     -d '{"message": "What are Corys technical skills?"}' \
+     --no-buffer
+```
+
+**Test in your browser:**
+
+Local:
+- 👉 [http://localhost:8000/](http://localhost:8000/)
+- 👉 [http://localhost:8000/health](http://localhost:8000/health)
+
+Production:
+- 👉 [https://coryfitzpatrick-ai-backend-production.up.railway.app/](https://coryfitzpatrick-ai-backend-production.up.railway.app/)
+- 👉 [https://coryfitzpatrick-ai-backend-production.up.railway.app/health](https://coryfitzpatrick-ai-backend-production.up.railway.app/health)
 
 ---
 
@@ -197,7 +308,7 @@ export GROQ_API_KEY="your-api-key-here"  # Mac/Linux
 $env:GROQ_API_KEY="your-api-key-here"    # Windows
 
 # 4. Start the server
-python server.py
+cory-ai-server
 
 # 5. When done, deactivate venv
 deactivate
@@ -219,7 +330,7 @@ This project is configured for deployment on **Railway** using **Nixpacks**.
 
 ### Key Files:
 - **nixpacks.toml:** Configures build (Python 3.11, dependencies)
-- **start.sh:** Launches FastAPI server
+- **scripts/start.sh:** Launches FastAPI server
 - **railway.json:** Health check and restart policy
 
 ### Optimizations Included:
@@ -260,7 +371,59 @@ deactivate
 cd coryfitzpatrick-ai-backend
 source venv/bin/activate     # Mac/Linux
 venv\Scripts\activate        # Windows
-python server.py
+cory-ai-server
+```
+
+---
+
+## 📁 Project Structure
+
+```
+cory-ai-chatbot/
+├── src/
+│   └── cory_ai_chatbot/
+│       ├── __init__.py          # Package initialization
+│       ├── server.py            # FastAPI server
+│       ├── cli.py               # Interactive chat client
+│       └── prepare_data.py      # Vector database preparation
+├── tests/
+│   ├── conftest.py              # Pytest configuration
+│   ├── test_server.py           # Server unit tests
+│   └── test_cli.py              # CLI unit tests
+├── data/
+│   ├── training_data.jsonl      # Training data
+│   └── chroma_db/               # Vector database (generated)
+├── scripts/
+│   └── start.sh                 # Production startup script
+├── docs/
+│   └── testing.md               # Testing documentation
+├── pyproject.toml               # Package configuration
+├── pytest.ini                   # Pytest configuration
+└── README.md                    # This file
+```
+
+### CLI Commands
+
+After installation with `pip install -e .`, three commands are available:
+
+- **`cory-ai-server`** - Start the FastAPI backend server (required for the chatbot to work)
+- **`cory-ai-chatbot`** - Launch interactive chat client (requires server to be running)
+- **`cory-ai-prepare-data`** - Create/update vector database from training data
+
+### Running Tests
+
+```bash
+# Run all tests
+pytest
+
+# Run with coverage
+pytest --cov=cory_ai_chatbot
+
+# Run specific test file
+pytest tests/test_server.py
+
+# Run with verbose output
+pytest -v
 ```
 
 ---

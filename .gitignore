@@ -1,7 +1,41 @@
-*.DS_Store
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+*.egg-info/
+dist/
+build/
+*.egg
+
+# Virtual environments
 venv/
-*.iml
+.venv/
+.venv1/
+env/
+ENV/
+
+# IDE
 .idea/
+.vscode/
+*.iml
+*.swp
+*.swo
+
+# OS
+.DS_Store
+Thumbs.db
 
 # Environment variables (contains API keys)
 .env
+
+# Data and caches
+data/chroma_db/
+.pytest_cache/
+.coverage
+htmlcov/
+*.log
+
+# Project specific
+training_data_backup.jsonl

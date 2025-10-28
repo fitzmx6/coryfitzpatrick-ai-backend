@@ -1,0 +1,85 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "cory-ai-chatbot"
+version = "0.1.0"
+description = "AI-powered portfolio chatbot for Cory Fitzpatrick"
+readme = "README.md"
+requires-python = ">=3.11"
+authors = [
+    {name = "Cory Fitzpatrick"}
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Developers",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+]
+
+dependencies = [
+    "fastapi>=0.120.1",
+    "starlette>=0.49.0",
+    "uvicorn[standard]==0.24.0",
+    "python-multipart==0.0.6",
+    "pydantic==2.5.0",
+    "pydantic-core==2.14.1",
+    "redis==5.0.1",
+    "slowapi==0.1.9",
+    "requests>=2.32.0",
+    "groq>=0.11.0",
+    "torch>=2.6.0",
+    "numpy<2.0.0",
+    "chromadb==0.4.18",
+    "sentence-transformers==2.7.0",
+]
+
+[project.optional-dependencies]
+dev = [
+    "pytest==7.4.3",
+    "pytest-asyncio==0.21.1",
+    "pytest-cov==4.1.0",
+    "requests-mock==1.11.0",
+]
+
+[project.scripts]
+cory-ai-server = "cory_ai_chatbot.server:main"
+cory-ai-chatbot = "cory_ai_chatbot.cli:main"
+cory-ai-prepare-data = "cory_ai_chatbot.prepare_data:main"
+
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "-v",
+    "--tb=short",
+    "--strict-markers",
+    "--disable-warnings",
+    "--color=yes",
+]
+markers = [
+    "unit: Unit tests",
+    "integration: Integration tests",
+]
+
+[tool.coverage.run]
+source = ["src"]
+omit = ["*/tests/*", "*/__pycache__/*"]
+
+[tool.coverage.report]
+exclude_lines = [
+    "pragma: no cover",
+    "def __repr__",
+    "raise AssertionError",
+    "raise NotImplementedError",
+    "if __name__ == .__main__.:",
+]
