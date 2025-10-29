@@ -148,8 +148,15 @@ NO_CONTEXT_ERROR_MESSAGE = (
     "Please ask about his background, technical expertise, or leadership experience."
 )
 
-# System prompt template for the AI assistant
-SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT", "Portfolio assistant prompt - set via SYSTEM_PROMPT env var")
+# Default system prompt template (minimal fallback if SYSTEM_PROMPT env var is not set)
+DEFAULT_SYSTEM_PROMPT = "Portfolio assistant prompt - set via SYSTEM_PROMPT env var"
+
+# Load system prompt from environment variable (required for production)
+# See .env.example for the full prompt template
+SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+
+if SYSTEM_PROMPT_TEMPLATE == DEFAULT_SYSTEM_PROMPT:
+    print("⚠️  WARNING: Using default system prompt. Set SYSTEM_PROMPT environment variable for production.")
 
 # --- Core Functions ---
 
