@@ -323,10 +323,22 @@ This project is configured for deployment on **Railway** using **Nixpacks**.
 ### Quick Deploy Overview:
 1. Push code to GitHub
 2. Create Railway project from GitHub repo
-3. **Add Environment Variable:** `GROQ_API_KEY` (get from https://console.groq.com)
+3. **Add Environment Variables:**
+   - `GROQ_API_KEY` (required - get from https://console.groq.com)
+   - `SYSTEM_PROMPT` (optional - customize AI behavior, see `.env.example` for default)
 4. **Add Redis plugin** (optional but recommended for caching)
 5. Generate domain
 6. Test endpoints
+
+### Environment Variables:
+
+**Required:**
+- `GROQ_API_KEY` - Your Groq API key for LLM inference
+
+**Optional:**
+- `SYSTEM_PROMPT` - Custom system prompt to control AI assistant behavior (defaults to portfolio chatbot prompt in code)
+- `REDIS_URL` - Redis connection string for caching (Railway plugin auto-sets this)
+- `PORT` - Server port (Railway auto-sets this, defaults to 8000 locally)
 
 ### Key Files:
 - **nixpacks.toml:** Configures build (Python 3.11, dependencies)
