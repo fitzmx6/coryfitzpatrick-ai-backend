@@ -35,13 +35,17 @@ cory-ai-chatbot
 
 **Alternative using Python module syntax:**
 ```bash
-# 1. Prepare data
+
+# 1. Activate the Python env
+source venv/bin/activate
+
+# 2. Prepare data
 python -m cory_ai_chatbot.prepare_data
 
-# 2. Start server
+# 3. Start server
 python -m cory_ai_chatbot.server
 
-# 3. Start chatbot
+# 4. Start chatbot
 python -m cory_ai_chatbot.cli
 ```
 

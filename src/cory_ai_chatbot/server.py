@@ -17,6 +17,7 @@ import redis
 from slowapi import Limiter
 from slowapi.util import get_remote_address
 from slowapi.errors import RateLimitExceeded
+from dotenv import load_dotenv
 
 # Determine the project root (three levels up from this file)
 PROJECT_ROOT = Path(__file__).parent.parent.parent
@@ -26,12 +27,7 @@ DATA_DIR = PROJECT_ROOT / "data"
 env_file = PROJECT_ROOT / ".env"
 if env_file.exists():
     print("Loading environment variables from .env file...")
-    with open(env_file) as f:
-        for line in f:
-            line = line.strip()
-            if line and not line.startswith("#") and "=" in line:
-                key, value = line.split("=", 1)
-                os.environ.setdefault(key.strip(), value.strip())
+    load_dotenv(env_file, verbose=False)  # Suppress parsing warnings
 
 # --- Redis Cache Setup ---
 # Try to connect to Redis if REDIS_URL is available, otherwise use in-memory caching
@@ -148,15 +144,20 @@ NO_CONTEXT_ERROR_MESSAGE = (
     "Please ask about his background, technical expertise, or leadership experience."
 )
 
-# Default system prompt template (minimal fallback if SYSTEM_PROMPT env var is not set)
-DEFAULT_SYSTEM_PROMPT = "Portfolio assistant prompt - set via SYSTEM_PROMPT env var"
+# Load system prompt from file (local) or environment variable (Railway)
+SYSTEM_PROMPT_FILE = PROJECT_ROOT / "system_prompt.txt"
+DEFAULT_SYSTEM_PROMPT = "Portfolio assistant prompt - set via SYSTEM_PROMPT env var or system_prompt.txt file"
 
-# Load system prompt from environment variable (required for production)
-# See .env.example for the full prompt template
-SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
-
-if SYSTEM_PROMPT_TEMPLATE == DEFAULT_SYSTEM_PROMPT:
-    print("⚠️  WARNING: Using default system prompt. Set SYSTEM_PROMPT environment variable for production.")
+# Try loading from file first (for local development), then fall back to env var (for Railway)
+if SYSTEM_PROMPT_FILE.exists():
+    print(f"Loading system prompt from {SYSTEM_PROMPT_FILE}...")
+    with open(SYSTEM_PROMPT_FILE, 'r', encoding='utf-8') as f:
+        SYSTEM_PROMPT_TEMPLATE = f.read()
+else:
+    # Fall back to environment variable (for Railway deployment)
+    SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+    if SYSTEM_PROMPT_TEMPLATE == DEFAULT_SYSTEM_PROMPT:
+        print("⚠️  WARNING: Using default system prompt. Set SYSTEM_PROMPT environment variable or create system_prompt.txt file.")
 
 # --- Core Functions ---
 

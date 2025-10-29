@@ -30,6 +30,9 @@ Thumbs.db
 # Environment variables (contains API keys)
 .env
 
+# System prompt (contains proprietary prompt engineering)
+system_prompt.txt
+
 # Data and caches
 data/chroma_db/
 .pytest_cache/
