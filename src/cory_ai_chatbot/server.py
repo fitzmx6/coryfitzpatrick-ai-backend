@@ -364,6 +364,37 @@ async def health():
     # This will now respond instantly
     return {"status": "healthy", "model": "llama-3.1-8b-instant", "provider": "groq"}
 
+@app.get("/debug/db")
+async def debug_db(request: Request):
+    """Debug endpoint to check vector database status"""
+    try:
+        collection = request.app.state.collection
+        count = collection.count()
+
+        # Get a sample document if any exist
+        sample = None
+        if count > 0:
+            results = collection.get(limit=1, include=['metadatas', 'documents'])
+            if results and results['ids']:
+                sample = {
+                    "id": results['ids'][0],
+                    "metadata": results['metadatas'][0] if results['metadatas'] else None
+                }
+
+        return {
+            "status": "ok",
+            "database_path": str(DATA_DIR / "chroma_db"),
+            "collection_name": "cory_profile",
+            "document_count": count,
+            "sample_document": sample
+        }
+    except Exception as e:
+        return {
+            "status": "error",
+            "error": str(e),
+            "database_path": str(DATA_DIR / "chroma_db")
+        }
+
 @app.get("/")
 async def root():
     """Root endpoint with service status and info"""
@@ -373,7 +404,8 @@ async def root():
         "endpoints": {
             "health": "/health",
             "chat": "/api/chat (POST)",
-            "chat_stream": "/api/chat/stream (POST)"
+            "chat_stream": "/api/chat/stream (POST)",
+            "debug": "/debug/db (GET)"
         },
         "note": "Service is currently running! If you cannot reach this endpoint, Railway credits may be exhausted. Contact Cory for updates.",
         "model": "llama-3.1-8b-instant",
