@@ -227,6 +227,14 @@ def set_cached_response(query: str, response: str, ttl: int = 3600):
     except Exception as redis_set_error:
         print(f"Redis set error: {redis_set_error}")
 
+def normalize_query(query: str) -> str:
+    """Normalize query by removing apostrophes and extra whitespace for better vector search matching"""
+    # Remove apostrophes (both straight ' and curly ')
+    normalized = query.replace("'", "").replace("'", "")
+    # Remove extra whitespace
+    normalized = " ".join(normalized.split())
+    return normalized
+
 def get_relevant_context(request: Request, query: str, n_results: int = 5, min_similarity: float = 0.3) -> str:
     """Search vector database for relevant information with caching"""
 
@@ -236,8 +244,11 @@ def get_relevant_context(request: Request, query: str, n_results: int = 5, min_s
     # noinspection PyUnresolvedReferences
     collection = request.app.state.collection
 
+    # Normalize query for consistent vector search results
+    normalized_query = normalize_query(query)
+
     # Encode query to embedding
-    query_embedding = embedding_model.encode([query]).tolist()
+    query_embedding = embedding_model.encode([normalized_query]).tolist()
 
     # Query ChromaDB with similarity filtering
     results = collection.query(
