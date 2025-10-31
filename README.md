@@ -23,13 +23,16 @@ It's built using a **Retrieval-Augmented Generation (RAG)** pipeline with **prod
 Already have everything installed? Here are the essential commands:
 
 ```bash
-# 1. Prepare the vector database (first time only)
+# 1. Activate the python venv
+source venv/bin/activate
+
+# 2. Prepare the vector database (first time only)
 cory-ai-prepare-data
 
-# 2. Start the backend server (leave running)
+# 3. Start the backend server (leave running)
 cory-ai-server
 
-# 3. In a new terminal, start the interactive chatbot
+# 4. In a new terminal, start the interactive chatbot
 cory-ai-chatbot
 ```
 
