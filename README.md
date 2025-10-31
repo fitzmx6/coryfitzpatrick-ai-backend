@@ -12,7 +12,7 @@ It's built using a **Retrieval-Augmented Generation (RAG)** pipeline with **prod
 - **Rate Limiting:** 20 requests/minute per IP
 - **Compression:** GZIP for 70% smaller responses
 - **Streaming:** Fast response streaming for better UX
-- **Deployment:** Railway (via `nixpacks.toml`)
+- **Deployment:** Google Cloud Run (via Docker & Cloud Build)
 
 **Performance:** Ultra-fast responses (<1s) with Groq + caching + streaming
 
@@ -218,7 +218,7 @@ curl http://localhost:8000/
 
 **Production:**
 ```bash
-curl https://coryfitzpatrick-ai-backend-production.up.railway.app/
+curl https://your-cloud-run-service-url.run.app/
 ```
 
 Expected response:
@@ -245,7 +245,7 @@ curl http://localhost:8000/health
 
 **Production:**
 ```bash
-curl https://coryfitzpatrick-ai-backend-production.up.railway.app/health
+curl https://your-cloud-run-service-url.run.app/health
 ```
 
 Expected response:
@@ -264,7 +264,7 @@ curl -X POST http://localhost:8000/api/chat \
 
 **Production:**
 ```bash
-curl -X POST https://coryfitzpatrick-ai-backend-production.up.railway.app/api/chat \
+curl -X POST https://your-cloud-run-service-url.run.app/api/chat \
      -H "Content-Type: application/json" \
      -d '{"message": "What is Corys experience at J&J?"}'
 ```
@@ -281,7 +281,7 @@ curl -X POST http://localhost:8000/api/chat/stream \
 
 **Production:**
 ```bash
-curl -X POST https://coryfitzpatrick-ai-backend-production.up.railway.app/api/chat/stream \
+curl -X POST https://your-cloud-run-service-url.run.app/api/chat/stream \
      -H "Content-Type: application/json" \
      -d '{"message": "What are Corys technical skills?"}' \
      --no-buffer
@@ -294,8 +294,7 @@ Local:
 - 👉 [http://localhost:8000/health](http://localhost:8000/health)
 
 Production:
-- 👉 [https://coryfitzpatrick-ai-backend-production.up.railway.app/](https://coryfitzpatrick-ai-backend-production.up.railway.app/)
-- 👉 [https://coryfitzpatrick-ai-backend-production.up.railway.app/health](https://coryfitzpatrick-ai-backend-production.up.railway.app/health)
+- 👉 Replace with your Cloud Run service URL after deployment
 
 ---
 
@@ -323,45 +322,78 @@ deactivate
 
 ---
 
-## 🚢 Deployment (Railway)
+## 🚢 Deployment (Google Cloud Run)
 
-This project is configured for deployment on **Railway** using **Nixpacks**.
+This project is configured for deployment on **Google Cloud Run** using **Docker** and **Cloud Build**.
 
 ### Quick Deploy Overview:
 1. Push code to GitHub
-2. Create Railway project from GitHub repo
-3. **Add Environment Variables:**
+2. Set up Google Cloud Project and connect GitHub repository
+3. Configure Cloud Build trigger using `cloudbuild.yaml`
+4. Trigger deployment (automatic on push to main)
+5. **Add Environment Variables** in Cloud Run Console:
    - `GROQ_API_KEY` (required - get from https://console.groq.com)
-   - `SYSTEM_PROMPT` (optional - customize AI behavior, see `.env.example` for default)
-4. **Add Redis plugin** (optional but recommended for caching)
-5. Generate domain
-6. Test endpoints
+   - `SYSTEM_PROMPT` (required - full system prompt text)
+6. Set Memory to **1 GiB** (required for ML model loading)
+7. Test endpoints at your Cloud Run service URL
 
 ### Environment Variables:
 
 **Required:**
 - `GROQ_API_KEY` - Your Groq API key for LLM inference
+- `SYSTEM_PROMPT` - Full system prompt text (from `system_prompt.txt`)
 
 **Optional:**
-- `SYSTEM_PROMPT` - Custom system prompt to control AI assistant behavior (defaults to portfolio chatbot prompt in code)
-- `REDIS_URL` - Redis connection string for caching (Railway plugin auto-sets this)
-- `PORT` - Server port (Railway auto-sets this, defaults to 8000 locally)
+- `REDIS_URL` - Redis connection string for caching (optional but recommended)
+- `PORT` - Server port (Cloud Run auto-sets to 8080, defaults to 8000 locally)
 
 ### Key Files:
-- **nixpacks.toml:** Configures build (Python 3.11, dependencies)
-- **scripts/start.sh:** Launches FastAPI server
-- **railway.json:** Health check and restart policy
+- **Dockerfile:** Configures Docker image with Python 3.11, dependencies, and pre-downloaded ML model
+- **cloudbuild.yaml:** Cloud Build configuration with Docker layer caching for fast builds
+- **.dockerignore:** Excludes unnecessary files from Docker builds
+
+### Deployment Steps (Console):
+
+1. **Initial Setup:**
+   - Create a Google Cloud Project
+   - Enable Cloud Run and Cloud Build APIs
+   - Connect your GitHub repository
+
+2. **Configure Cloud Build Trigger:**
+   - Go to Cloud Build > Triggers
+   - Edit your trigger configuration
+   - Set **Build Configuration** to: `cloudbuild.yaml`
+   - This enables Docker layer caching (2-3 min builds instead of 15 min)
+
+3. **Deploy:**
+   - Push to main branch (or manually trigger build)
+   - Wait for build to complete (~15 min first time, ~2-3 min after)
+
+4. **Configure Service:**
+   - Go to Cloud Run > Your Service
+   - Click **"EDIT & DEPLOY NEW REVISION"**
+   - Add environment variables (see above)
+   - Set **Memory** to 1 GiB
+   - Click **"DEPLOY"**
 
 ### Optimizations Included:
 ✅ Ultra-fast responses with Groq (<1s)
 ✅ Streaming responses for better UX
-✅ Redis caching (99%+ faster repeat queries)
+✅ Docker layer caching for fast builds (2-3 min)
+✅ Pre-downloaded ML model in Docker image (no HuggingFace rate limits)
+✅ Redis caching support (99%+ faster repeat queries)
 ✅ GZIP compression (70% smaller transfers)
 ✅ Rate limiting (20 req/min protection)
 ✅ Vector search filtering (better quality)
-✅ Instant cold starts (~2-3s)
+✅ Fast cold starts (~2-3s)
 
-> ⚙️ You don't need `nixpacks.toml` or `start.sh` for local development—only for production deployment.
+### Cost Estimate:
+With **300 API calls/month** on Cloud Run's free tier:
+- Free tier: 2M requests/month, 360k GB-seconds/month
+- Your usage: ~0.00001% of free tier = **$0.00/month**
+- First 2M requests are free, then ~$0.40 per million
+
+> ⚙️ You don't need `Dockerfile` or `cloudbuild.yaml` for local development—only for production deployment.
 
 ---
 
@@ -412,10 +444,11 @@ cory-ai-chatbot/
 ├── data/
 │   ├── training_data.jsonl      # Training data
 │   └── chroma_db/               # Vector database (generated)
-├── scripts/
-│   └── start.sh                 # Production startup script
 ├── docs/
 │   └── testing.md               # Testing documentation
+├── Dockerfile                   # Docker image configuration
+├── cloudbuild.yaml              # Cloud Build configuration
+├── .dockerignore                # Docker build exclusions
 ├── pyproject.toml               # Package configuration
 ├── pytest.ini                   # Pytest configuration
 └── README.md                    # This file

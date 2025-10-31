@@ -10,7 +10,7 @@ import json
 
 # API Configuration
 API_URL = "http://localhost:8000/api/chat/stream"
-# For production, use: API_URL = "https://coryfitzpatrick-ai-backend-production.up.railway.app/api/chat/stream"
+# For production, set this to your Cloud Run service URL
 
 def print_welcome():
     """Display welcome message"""

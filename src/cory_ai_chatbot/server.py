@@ -144,17 +144,17 @@ NO_CONTEXT_ERROR_MESSAGE = (
     "Please ask about his background, technical expertise, or leadership experience."
 )
 
-# Load system prompt from file (local) or environment variable (Railway)
+# Load system prompt from file (local) or environment variable (Cloud Run)
 SYSTEM_PROMPT_FILE = PROJECT_ROOT / "system_prompt.txt"
 DEFAULT_SYSTEM_PROMPT = "Portfolio assistant prompt - set via SYSTEM_PROMPT env var or system_prompt.txt file"
 
-# Try loading from file first (for local development), then fall back to env var (for Railway)
+# Try loading from file first (for local development), then fall back to env var (for Cloud Run)
 if SYSTEM_PROMPT_FILE.exists():
     print(f"Loading system prompt from {SYSTEM_PROMPT_FILE}...")
     with open(SYSTEM_PROMPT_FILE, 'r', encoding='utf-8') as f:
         SYSTEM_PROMPT_TEMPLATE = f.read()
 else:
-    # Fall back to environment variable (for Railway deployment)
+    # Fall back to environment variable (for Cloud Run deployment)
     SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
     if SYSTEM_PROMPT_TEMPLATE == DEFAULT_SYSTEM_PROMPT:
         print("⚠️  WARNING: Using default system prompt. Set SYSTEM_PROMPT environment variable or create system_prompt.txt file.")
@@ -418,7 +418,7 @@ async def root():
             "chat_stream": "/api/chat/stream (POST)",
             "debug": "/debug/db (GET)"
         },
-        "note": "Service is currently running! If you cannot reach this endpoint, Railway credits may be exhausted. Contact Cory for updates.",
+        "note": "Service is currently running on Google Cloud Run!",
         "model": "llama-3.1-8b-instant",
         "provider": "groq"
     }
