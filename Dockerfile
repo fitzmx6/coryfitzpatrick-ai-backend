@@ -22,6 +22,9 @@ RUN python -c "from sentence_transformers import SentenceTransformer; SentenceTr
 # Copy application code
 COPY . .
 
+# Install the package in editable mode so modules are available
+RUN pip install -e .
+
 # Create data directory for ChromaDB
 RUN mkdir -p /app/data/chroma_db
 
