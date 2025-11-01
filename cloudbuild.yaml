@@ -25,6 +25,8 @@ steps:
       - --image=$_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
       - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID
       - --region=$_DEPLOY_REGION
+      - --memory=1Gi
+      - --set-env-vars=GROQ_API_KEY=$_GROQ_API_KEY,SYSTEM_PROMPT=$_SYSTEM_PROMPT
       - --quiet
 images:
   - $_AR_HOSTNAME/$_AR_PROJECT_ID/$_AR_REPOSITORY/$REPO_NAME/$_SERVICE_NAME:$COMMIT_SHA
@@ -39,6 +41,8 @@ substitutions:
   _PLATFORM: managed
   _SERVICE_NAME: coryfitzpatrick-ai-backend
   _TRIGGER_ID: bc16ce7e-9c13-46fb-9e46-6ed97a071d82
+  _GROQ_API_KEY: ""
+  _SYSTEM_PROMPT: ""
 tags:
   - gcp-cloud-build-deploy-cloud-run
   - gcp-cloud-build-deploy-cloud-run-managed
