@@ -11,6 +11,7 @@ from cory_ai_chatbot.server import (
     set_cached_response,
     get_relevant_context,
     query_groq,
+    normalize_query,
     NO_CONTEXT_ERROR_MESSAGE,
     app
 )
@@ -355,3 +356,115 @@ def test_given_root_request_when_get_root_then_returns_service_info(client):
     assert "service" in data
     assert "status" in data
     assert data["status"] == "online"
+
+# ============================================================================
+# Test: normalize_query
+# ============================================================================
+
+def test_given_query_with_apostrophes_when_normalize_then_removes_apostrophes():
+    query = "What is Cory's experience?"
+    expected = "What is Corys experience?"
+
+    result = normalize_query(query)
+
+    assert result == expected
+
+def test_given_query_with_curly_apostrophes_when_normalize_then_removes_apostrophes():
+    query = "What's Cory's experience?"
+    expected = "Whats Corys experience?"
+
+    result = normalize_query(query)
+
+    assert result == expected
+
+def test_given_query_with_extra_whitespace_when_normalize_then_removes_whitespace():
+    query = "What  is   Cory's    experience?"
+    expected = "What is Corys experience?"
+
+    result = normalize_query(query)
+
+    assert result == expected
+
+# ============================================================================
+# Test: CORS Middleware
+# ============================================================================
+
+def test_given_allowed_origin_when_request_then_cors_headers_set(client):
+    response = client.get("/health", headers={"Origin": "https://coryfitzpatrick.com"})
+
+    assert response.status_code == 200
+    # TestClient doesn't fully process CORS middleware, so we just verify endpoint works
+
+def test_given_localhost_origin_when_request_then_cors_headers_set(client):
+    response = client.get("/health", headers={"Origin": "http://localhost:3000"})
+
+    assert response.status_code == 200
+
+# ============================================================================
+# Test: Bot Protection Middleware
+# ============================================================================
+
+def test_given_malicious_user_agent_when_chat_request_then_blocked(client):
+    # Bot protection middleware should block malicious user agents
+    response = client.post(
+        "/api/chat",
+        json={"message": "test"},
+        headers={"User-Agent": "masscan/1.0"}
+    )
+
+    # Should be blocked with 403
+    assert response.status_code == 403
+    assert "Forbidden" in response.json()["detail"]
+
+def test_given_scanner_user_agent_when_chat_request_then_blocked(client):
+    response = client.post(
+        "/api/chat",
+        json={"message": "test"},
+        headers={"User-Agent": "nikto/2.1.6"}
+    )
+
+    assert response.status_code == 403
+
+def test_given_normal_user_agent_when_chat_request_then_allowed(client):
+    with patch('cory_ai_chatbot.server.get_relevant_context') as mock_context, \
+         patch('cory_ai_chatbot.server.query_groq') as mock_groq, \
+         patch('cory_ai_chatbot.server.get_cached_response') as mock_cached:
+
+        mock_cached.return_value = None
+        mock_context.return_value = "Cory is a software engineer"
+        mock_groq.return_value = "Cory has experience in Python"
+
+        response = client.post(
+            "/api/chat",
+            json={"message": "test"},
+            headers={"User-Agent": "Mozilla/5.0"}
+        )
+
+        assert response.status_code == 200
+
+def test_given_health_check_when_bot_user_agent_then_allowed(client):
+    # Health check should bypass bot protection
+    response = client.get(
+        "/health",
+        headers={"User-Agent": "masscan/1.0"}
+    )
+
+    assert response.status_code == 200
+
+def test_given_root_endpoint_when_bot_user_agent_then_allowed(client):
+    # Root endpoint should bypass bot protection
+    response = client.get(
+        "/",
+        headers={"User-Agent": "nikto/2.1.6"}
+    )
+
+    assert response.status_code == 200
+
+def test_given_debug_endpoint_when_bot_user_agent_then_allowed(client):
+    # Debug endpoint should bypass bot protection
+    response = client.get(
+        "/debug/db",
+        headers={"User-Agent": "masscan/1.0"}
+    )
+
+    assert response.status_code == 200

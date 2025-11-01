@@ -444,10 +444,71 @@ gcloud secrets add-iam-policy-binding SYSTEM_PROMPT \
 ✅ Automated secret injection via Cloud Run
 ✅ No secrets in source code or environment variables
 
+### Cloud Scheduler Keep-Warm (Recommended - Prevents Cold Starts)
+
+Cloud Run scales to zero after ~15 minutes of inactivity, causing 15-second cold starts when the service wakes up. To prevent this, set up a Cloud Scheduler job to ping your service every 10 minutes:
+
+**Step 1: Enable Cloud Scheduler API**
+```bash
+gcloud services enable cloudscheduler.googleapis.com
+```
+
+**Step 2: Create Keep-Warm Job**
+```bash
+gcloud scheduler jobs create http coryfitzpatrick-ai-keepwarm \
+  --schedule="*/10 * * * *" \
+  --uri="https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/health" \
+  --location=us-central1 \
+  --http-method=GET
+```
+
+**What This Does:**
+- Pings your `/health` endpoint every 10 minutes (6 times/hour × 24 hours = 144 pings/day)
+- Keeps your Cloud Run instance warm and ready to respond
+- Eliminates 15-second cold starts for better user experience
+- Response time improves from 15s (cold) to <1s (warm)
+
+**Cost:** $0/month
+- Cloud Scheduler free tier: 3 jobs (you're using 1)
+- Cloud Run free tier: 2M requests/month (you're using ~4,320/month = 0.2%)
+
+**Managing the Job:**
+```bash
+# View job status
+gcloud scheduler jobs list --location=us-central1
+
+# Pause the job (if needed)
+gcloud scheduler jobs pause coryfitzpatrick-ai-keepwarm --location=us-central1
+
+# Resume the job (if paused)
+gcloud scheduler jobs resume coryfitzpatrick-ai-keepwarm --location=us-central1
+
+# Delete the job (if no longer needed)
+gcloud scheduler jobs delete coryfitzpatrick-ai-keepwarm --location=us-central1
+```
+
+**Alternative Cron Schedules:**
+```bash
+# Every 5 minutes (more aggressive, still free)
+--schedule="*/5 * * * *"
+
+# Every 15 minutes (less aggressive, still prevents cold starts)
+--schedule="*/15 * * * *"
+
+# Only during business hours (9 AM - 5 PM, Mon-Fri)
+--schedule="*/10 9-17 * * 1-5"
+
+# Only during waking hours (8 AM - 11 PM, every day)
+--schedule="*/10 8-23 * * *"
+```
+
+---
+
 ### Cost Estimate:
-With **300 API calls/month** on Cloud Run's free tier:
-- Free tier: 2M requests/month, 360k GB-seconds/month
-- Your usage: ~0.00001% of free tier = **$0.00/month**
+With **300 API calls/month** + **Cloud Scheduler keep-warm** on Cloud Run's free tier:
+- Free tier: 2M requests/month, 360k GB-seconds/month, 3 Cloud Scheduler jobs
+- Your usage: ~4,620 requests/month (300 user + 4,320 keep-warm) = ~0.2% of free tier
+- **Total cost: $0.00/month**
 - First 2M requests are free, then ~$0.40 per million
 
 > ⚙️ You don't need `Dockerfile` or `cloudbuild.yaml` for local development—only for production deployment.
