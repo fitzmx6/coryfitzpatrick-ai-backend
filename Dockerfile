@@ -25,6 +25,9 @@ COPY . .
 # Create data directory for ChromaDB
 RUN mkdir -p /app/data/chroma_db
 
+# Generate vector database from training data during build
+RUN python -m cory_ai_chatbot.prepare_data
+
 # Expose port (Cloud Run will set PORT env var)
 EXPOSE 8080
 
