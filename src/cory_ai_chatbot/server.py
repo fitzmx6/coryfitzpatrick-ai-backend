@@ -120,6 +120,7 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 ALLOWED_ORIGINS = [
     "https://coryfitzpatrick.com",
     "https://www.coryfitzpatrick.com",
+    "https://fitzmx6.github.io",  # GitHub Pages
     "http://localhost",
     "http://localhost:3000",  # React dev server
     "http://localhost:8000",  # FastAPI dev server
