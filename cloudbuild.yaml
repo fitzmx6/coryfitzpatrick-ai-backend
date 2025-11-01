@@ -26,6 +26,7 @@ steps:
       - --labels=managed-by=gcp-cloud-build-deploy-cloud-run,commit-sha=$COMMIT_SHA,gcb-build-id=$BUILD_ID,gcb-trigger-id=$_TRIGGER_ID
       - --region=$_DEPLOY_REGION
       - --memory=1Gi
+      - --clear-env-vars
       - --set-secrets=GROQ_API_KEY=GROQ_API_KEY:latest,SYSTEM_PROMPT=SYSTEM_PROMPT:latest
       - --quiet
 images:
