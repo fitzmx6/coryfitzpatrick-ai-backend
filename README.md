@@ -218,7 +218,7 @@ curl http://localhost:8000/
 
 **Production:**
 ```bash
-curl https://your-cloud-run-service-url.run.app/
+curl https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/
 ```
 
 Expected response:
@@ -245,7 +245,7 @@ curl http://localhost:8000/health
 
 **Production:**
 ```bash
-curl https://your-cloud-run-service-url.run.app/health
+curl https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/health
 ```
 
 Expected response:
@@ -264,7 +264,7 @@ curl -X POST http://localhost:8000/api/chat \
 
 **Production:**
 ```bash
-curl -X POST https://your-cloud-run-service-url.run.app/api/chat \
+curl -X POST https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/api/chat \
      -H "Content-Type: application/json" \
      -d '{"message": "What is Corys experience at J&J?"}'
 ```
@@ -281,7 +281,7 @@ curl -X POST http://localhost:8000/api/chat/stream \
 
 **Production:**
 ```bash
-curl -X POST https://your-cloud-run-service-url.run.app/api/chat/stream \
+curl -X POST https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/api/chat/stream \
      -H "Content-Type: application/json" \
      -d '{"message": "What are Corys technical skills?"}' \
      --no-buffer
@@ -294,7 +294,8 @@ Local:
 - 👉 [http://localhost:8000/health](http://localhost:8000/health)
 
 Production:
-- 👉 Replace with your Cloud Run service URL after deployment
+- 👉 [https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/](https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/)
+- 👉 [https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/health](https://coryfitzpatrick-ai-backend-fcwbtvbnfa-uc.a.run.app/health)
 
 ---
 
@@ -327,65 +328,121 @@ deactivate
 This project is configured for deployment on **Google Cloud Run** using **Docker** and **Cloud Build**.
 
 ### Quick Deploy Overview:
-1. Push code to GitHub
-2. Set up Google Cloud Project and connect GitHub repository
-3. Configure Cloud Build trigger using `cloudbuild.yaml`
-4. Trigger deployment (automatic on push to main)
-5. **Add Environment Variables** in Cloud Run Console:
-   - `GROQ_API_KEY` (required - get from https://console.groq.com)
-   - `SYSTEM_PROMPT` (required - full system prompt text)
-6. Set Memory to **1 GiB** (required for ML model loading)
+1. Create secrets in Google Secret Manager
+2. Push code to GitHub
+3. Set up Google Cloud Project and connect GitHub repository
+4. Configure Cloud Build trigger using `cloudbuild.yaml`
+5. Grant Cloud Run service account access to secrets
+6. Trigger deployment (automatic on push to main)
 7. Test endpoints at your Cloud Run service URL
+
+### Secret Manager Setup (Required for Production):
+
+This project uses **Google Secret Manager** to securely store sensitive configuration like API keys and system prompts.
+
+**Step 1: Create Secrets**
+
+Go to [Secret Manager Console](https://console.cloud.google.com/security/secret-manager) and create two secrets:
+
+1. **GROQ_API_KEY**
+   - Name: `GROQ_API_KEY`
+   - Value: Your Groq API key from https://console.groq.com
+   - Click "CREATE SECRET"
+
+2. **SYSTEM_PROMPT**
+   - Name: `SYSTEM_PROMPT`
+   - Value: Copy the entire content from `system_prompt.txt`
+   - Click "CREATE SECRET"
+
+**Step 2: Grant Permissions**
+
+The Cloud Run service needs permission to read these secrets. Run these commands:
+
+```bash
+# Get your project's compute service account
+PROJECT_NUMBER=$(gcloud projects describe $(gcloud config get-value project) --format="value(projectNumber)")
+SERVICE_ACCOUNT="${PROJECT_NUMBER}-compute@developer.gserviceaccount.com"
+
+# Grant access to both secrets
+gcloud secrets add-iam-policy-binding GROQ_API_KEY \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/secretmanager.secretAccessor"
+
+gcloud secrets add-iam-policy-binding SYSTEM_PROMPT \
+  --member="serviceAccount:${SERVICE_ACCOUNT}" \
+  --role="roles/secretmanager.secretAccessor"
+```
+
+**Note:** The `cloudbuild.yaml` file is already configured to mount these secrets as environment variables in Cloud Run.
 
 ### Environment Variables:
 
-**Required:**
-- `GROQ_API_KEY` - Your Groq API key for LLM inference
-- `SYSTEM_PROMPT` - Full system prompt text (from `system_prompt.txt`)
+**Production (Cloud Run):**
+- Secrets are automatically injected from Secret Manager (configured in `cloudbuild.yaml`)
+- No manual environment variable configuration needed
 
-**Optional:**
-- `REDIS_URL` - Redis connection string for caching (optional but recommended)
-- `PORT` - Server port (Cloud Run auto-sets to 8080, defaults to 8000 locally)
+**Local Development:**
+- `GROQ_API_KEY` - Set via `export GROQ_API_KEY="your-key-here"`
+- `SYSTEM_PROMPT` - Optional; reads from `system_prompt.txt` file if not set
+- `PORT` - Server port (defaults to 8000 locally, 8080 on Cloud Run)
 
 ### Key Files:
 - **Dockerfile:** Configures Docker image with Python 3.11, dependencies, and pre-downloaded ML model
 - **cloudbuild.yaml:** Cloud Build configuration with Docker layer caching for fast builds
 - **.dockerignore:** Excludes unnecessary files from Docker builds
 
-### Deployment Steps (Console):
+### Deployment Steps:
 
 1. **Initial Setup:**
    - Create a Google Cloud Project
-   - Enable Cloud Run and Cloud Build APIs
-   - Connect your GitHub repository
+   - Enable Cloud Run, Cloud Build, and Secret Manager APIs
+   - Connect your GitHub repository to Cloud Build
 
-2. **Configure Cloud Build Trigger:**
-   - Go to Cloud Build > Triggers
-   - Edit your trigger configuration
+2. **Create Secrets** (see Secret Manager Setup above):
+   - Create `GROQ_API_KEY` secret with your Groq API key
+   - Create `SYSTEM_PROMPT` secret with the system prompt text
+   - Grant the Cloud Run service account `secretAccessor` role
+
+3. **Configure Cloud Build Trigger:**
+   - Go to Cloud Build > Triggers in the Console
+   - Create a new trigger or edit existing one
    - Set **Build Configuration** to: `cloudbuild.yaml`
-   - This enables Docker layer caching (2-3 min builds instead of 15 min)
+   - Set **Branch** to: `^main$`
+   - No substitution variables needed (secrets are handled automatically)
 
-3. **Deploy:**
+4. **Deploy:**
    - Push to main branch (or manually trigger build)
-   - Wait for build to complete (~15 min first time, ~2-3 min after)
+   - Wait for build to complete (~15 min first time, ~2-3 min with caching)
+   - Cloud Build will automatically:
+     - Build Docker image with pre-loaded ML model
+     - Push image to Artifact Registry
+     - Deploy to Cloud Run with secrets mounted
+     - Set memory to 1 GiB
 
-4. **Configure Service:**
-   - Go to Cloud Run > Your Service
-   - Click **"EDIT & DEPLOY NEW REVISION"**
-   - Add environment variables (see above)
-   - Set **Memory** to 1 GiB
-   - Click **"DEPLOY"**
+5. **Verify Deployment:**
+   - Go to Cloud Run > Services
+   - Click on your service to get the service URL
+   - Test the endpoints (see examples below)
 
-### Optimizations Included:
-✅ Ultra-fast responses with Groq (<1s)
+### Optimizations & Security Features:
+
+**Performance:**
+✅ Ultra-fast responses with Groq LLM (<1s)
 ✅ Streaming responses for better UX
-✅ Docker layer caching for fast builds (2-3 min)
+✅ Docker layer caching for fast builds (2-3 min vs 15 min)
 ✅ Pre-downloaded ML model in Docker image (no HuggingFace rate limits)
 ✅ Redis caching support (99%+ faster repeat queries)
 ✅ GZIP compression (70% smaller transfers)
-✅ Rate limiting (20 req/min protection)
 ✅ Vector search filtering (better quality)
 ✅ Fast cold starts (~2-3s)
+
+**Security:**
+✅ Google Secret Manager for secure credential storage
+✅ CORS protection (restricts access to coryfitzpatrick.com only)
+✅ Rate limiting (20 requests/minute per IP via SlowAPI)
+✅ Bot protection middleware (blocks malicious scanners)
+✅ Automated secret injection via Cloud Run
+✅ No secrets in source code or environment variables
 
 ### Cost Estimate:
 With **300 API calls/month** on Cloud Run's free tier:

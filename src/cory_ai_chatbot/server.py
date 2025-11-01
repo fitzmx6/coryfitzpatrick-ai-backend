@@ -115,17 +115,61 @@ app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
 
 # --- End Model Loading ---
 
-# Enable CORS
+# Enable CORS - Restrict to coryfitzpatrick.com
+# Allowed origins: production domain, localhost for development, and common subdomains
+ALLOWED_ORIGINS = [
+    "https://coryfitzpatrick.com",
+    "https://www.coryfitzpatrick.com",
+    "http://localhost",
+    "http://localhost:3000",  # React dev server
+    "http://localhost:8000",  # FastAPI dev server
+    "http://localhost:8080",  # Alternative port
+]
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"], # In production, lock this down
+    allow_origins=ALLOWED_ORIGINS,
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "OPTIONS"],  # Only allow necessary methods
+    allow_headers=["Content-Type", "Authorization"],  # Only allow necessary headers
+    max_age=600,  # Cache preflight requests for 10 minutes
 )
 
 # Enable GZIP compression for faster response transfers
 app.add_middleware(GZipMiddleware, minimum_size=1000)
+
+# Bot protection middleware - Block known malicious scanners and crawlers
+# Note: CORS middleware already restricts browser access to coryfitzpatrick.com
+BLOCKED_USER_AGENTS = [
+    "masscan", "nmap", "nikto", "sqlmap", "metasploit", "burp",
+    "w3af", "acunetix", "nessus", "qualys", "openvas",
+    "zap", "skipfish", "wfuzz", "dirb", "dirbuster",
+    "semrush", "ahrefsbot", "mj12bot", "dotbot",  # SEO bots
+]
+
+@app.middleware("http")
+async def bot_protection_middleware(request: Request, call_next):
+    """
+    Block malicious scanners and unwanted crawlers.
+    CORS middleware handles frontend origin restrictions.
+    Exempts health check and info endpoints.
+    """
+    # Allow health checks and root endpoint without restrictions
+    if request.url.path in ["/", "/health", "/debug/db"]:
+        return await call_next(request)
+
+    user_agent = request.headers.get("user-agent", "").lower()
+
+    # Block known malicious/scanning tools
+    for blocked in BLOCKED_USER_AGENTS:
+        if blocked in user_agent:
+            return JSONResponse(
+                status_code=403,
+                content={"detail": "Forbidden: Automated scanning not permitted"}
+            )
+
+    response = await call_next(request)
+    return response
 
 # --- Pydantic Models ---
 
@@ -144,20 +188,21 @@ NO_CONTEXT_ERROR_MESSAGE = (
     "Please ask about his background, technical expertise, or leadership experience."
 )
 
-# Load system prompt from file (local) or environment variable (Cloud Run)
+# Load system prompt from environment variable (Cloud Run with Secret Manager) or file (local development)
 SYSTEM_PROMPT_FILE = PROJECT_ROOT / "system_prompt.txt"
 DEFAULT_SYSTEM_PROMPT = "Portfolio assistant prompt - set via SYSTEM_PROMPT env var or system_prompt.txt file"
 
-# Try loading from file first (for local development), then fall back to env var (for Cloud Run)
-if SYSTEM_PROMPT_FILE.exists():
-    print(f"Loading system prompt from {SYSTEM_PROMPT_FILE}...")
+# Prioritize environment variable (for Cloud Run with Secret Manager), then fall back to file (for local development)
+SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT")
+if SYSTEM_PROMPT_TEMPLATE:
+    print("✅ Loading system prompt from SYSTEM_PROMPT environment variable (Secret Manager)...")
+elif SYSTEM_PROMPT_FILE.exists():
+    print(f"✅ Loading system prompt from {SYSTEM_PROMPT_FILE}...")
     with open(SYSTEM_PROMPT_FILE, 'r', encoding='utf-8') as f:
         SYSTEM_PROMPT_TEMPLATE = f.read()
 else:
-    # Fall back to environment variable (for Cloud Run deployment)
-    SYSTEM_PROMPT_TEMPLATE = os.environ.get("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
-    if SYSTEM_PROMPT_TEMPLATE == DEFAULT_SYSTEM_PROMPT:
-        print("⚠️  WARNING: Using default system prompt. Set SYSTEM_PROMPT environment variable or create system_prompt.txt file.")
+    SYSTEM_PROMPT_TEMPLATE = DEFAULT_SYSTEM_PROMPT
+    print("⚠️  WARNING: Using default system prompt. Set SYSTEM_PROMPT environment variable or create system_prompt.txt file.")
 
 # --- Core Functions ---
 
