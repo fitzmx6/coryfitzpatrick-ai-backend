@@ -132,7 +132,7 @@ async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONRe
         content={"detail": "Rate limit exceeded. Please try again later."}
     )
 
-app.add_exception_handler(RateLimitExceeded, rate_limit_handler)
+app.add_exception_handler(RateLimitExceeded, rate_limit_handler)  # type: ignore[arg-type]
 
 # --- End Model Loading ---
 
