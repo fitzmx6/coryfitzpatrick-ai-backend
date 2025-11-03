@@ -454,6 +454,7 @@ async def debug_db(request: Request):
         sample = None
         if count > 0:
             results = collection.get(limit=1, include=['metadatas', 'documents'])
+
             if results and results['ids']:
                 sample = {
                     "id": results['ids'][0],
@@ -467,10 +468,10 @@ async def debug_db(request: Request):
             "document_count": count,
             "sample_document": sample
         }
-    except Exception as e:
+    except Exception as exception:
         return {
             "status": "error",
-            "error": str(e),
+            "error": str(exception),
             "database_path": str(DATA_DIR / "chroma_db")
         }
 
