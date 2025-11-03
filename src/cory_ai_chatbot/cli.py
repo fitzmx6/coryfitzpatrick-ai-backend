@@ -6,24 +6,33 @@ Connects to the streaming API and maintains conversation history
 
 import requests
 import sys
-import json
+
+# ============================================================================
+# Configuration Constants
+# ============================================================================
 
 # API Configuration
 API_URL = "http://localhost:8000/api/chat/stream"
 # For production, set this to your Cloud Run service URL
 
+# Display Configuration
+DISPLAY_WIDTH = 60  # Width of separator lines
+
+# Network Configuration
+API_TIMEOUT = 30  # Timeout for API requests in seconds
+
 def print_welcome():
     """Display welcome message"""
-    print("\n" + "="*60)
+    print("\n" + "=" * DISPLAY_WIDTH)
     print("Welcome to Cory Fitzpatrick's AI Portfolio Chatbot!")
-    print("="*60)
+    print("=" * DISPLAY_WIDTH)
     print("\nAsk me anything about Cory's:")
     print("  • Work experience and achievements")
     print("  • Technical skills and expertise")
     print("  • Leadership philosophy and approach")
     print("  • Contact information")
     print("\nType 'quit' or 'exit' to end the conversation\n")
-    print("="*60 + "\n")
+    print("=" * DISPLAY_WIDTH + "\n")
 
 def send_question(question, conversation_history):
     """
@@ -47,7 +56,7 @@ def send_question(question, conversation_history):
             API_URL,
             json=payload,
             stream=True,
-            timeout=30
+            timeout=API_TIMEOUT
         )
         response.raise_for_status()
 

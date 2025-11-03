@@ -66,6 +66,9 @@ addopts = [
     "--strict-markers",
     "--disable-warnings",
     "--color=yes",
+    "--cov=src/cory_ai_chatbot",
+    "--cov-report=term-missing",
+    "--cov-report=html",
 ]
 markers = [
     "unit: Unit tests",

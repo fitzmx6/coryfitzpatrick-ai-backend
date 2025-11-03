@@ -23,6 +23,27 @@ from dotenv import load_dotenv
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
+# ============================================================================
+# Configuration Constants
+# ============================================================================
+
+# Model Configuration
+EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'
+LLM_MODEL_NAME = "llama-3.1-8b-instant"
+COLLECTION_NAME = "cory_profile"
+
+# Vector Search Configuration
+N_SEARCH_RESULTS = 5
+MAX_DISTANCE_THRESHOLD = 1.5  # Maximum cosine distance for relevant results
+
+# Cache Configuration
+DEFAULT_CACHE_TTL = 3600  # 1 hour in seconds
+
+# LLM Generation Parameters
+GROQ_TEMPERATURE = 0.3
+GROQ_MAX_TOKENS = 500
+GROQ_TOP_P = 0.9
+
 # Load environment variables from .env file if it exists
 env_file = PROJECT_ROOT / ".env"
 if env_file.exists():
@@ -66,7 +87,7 @@ async def load_models(fastapi_app: FastAPI):
 
     print("⏳ Loading embedding model...")
     # noinspection PyUnresolvedReferences
-    fastapi_app.state.embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    fastapi_app.state.embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
     print(f"✅ Embedding model loaded in {time.time() - start_time:.2f}s")
 
     print("⏳ Connecting to ChromaDB...")
@@ -74,7 +95,7 @@ async def load_models(fastapi_app: FastAPI):
     # noinspection PyUnresolvedReferences
     fastapi_app.state.chroma_client = chromadb.PersistentClient(path=str(chroma_path), settings=Settings(anonymized_telemetry=False))
     # noinspection PyUnresolvedReferences
-    fastapi_app.state.collection = fastapi_app.state.chroma_client.get_collection("cory_profile")
+    fastapi_app.state.collection = fastapi_app.state.chroma_client.get_collection(COLLECTION_NAME)
     print(f"✅ ChromaDB connected in {time.time() - start_time:.2f}s")
 
     print(f"🚀 All models loaded! Total startup time: {time.time() - start_time:.2f}s")
@@ -222,11 +243,11 @@ def query_groq(prompt: str, conversation_history: list = None, stream: bool = Fa
         messages.append({"role": "user", "content": prompt})
 
         response = groq_client.chat.completions.create(
-            model="llama-3.1-8b-instant",  # Fast, high-quality model
+            model=LLM_MODEL_NAME,
             messages=messages,
-            temperature=0.3,
-            max_tokens=500,
-            top_p=0.9,
+            temperature=GROQ_TEMPERATURE,
+            max_tokens=GROQ_MAX_TOKENS,
+            top_p=GROQ_TOP_P,
             stream=stream
         )
 
@@ -262,7 +283,7 @@ def get_cached_response(query: str) -> str | None:
 
     return None
 
-def set_cached_response(query: str, response: str, ttl: int = 3600):
+def set_cached_response(query: str, response: str, ttl: int = DEFAULT_CACHE_TTL):
     """Cache response in Redis with TTL (default 1 hour)"""
     if not redis_client:
         return
@@ -282,8 +303,8 @@ def normalize_query(query: str) -> str:
     normalized = " ".join(normalized.split())
     return normalized
 
-def get_relevant_context(request: Request, query: str, n_results: int = 5, min_similarity: float = 0.3) -> str:
-    """Search vector database for relevant information with caching"""
+def get_relevant_context(request: Request, query: str) -> str:
+    """Search vector database for relevant information"""
 
     # Get models from app.state
     # noinspection PyUnresolvedReferences
@@ -300,7 +321,7 @@ def get_relevant_context(request: Request, query: str, n_results: int = 5, min_s
     # Query ChromaDB with similarity filtering
     results = collection.query(
         query_embeddings=query_embedding,
-        n_results=n_results
+        n_results=N_SEARCH_RESULTS
     )
 
     if not results['documents'][0]:
@@ -314,9 +335,8 @@ def get_relevant_context(request: Request, query: str, n_results: int = 5, min_s
     for idx, (doc, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
         # Skip low-quality matches if distance data is available
         if distances and idx < len(distances):
-            # Convert distance to similarity (inverse relationship)
-            # Typical distance range is 0-2, lower is better
-            if distances[idx] > 1.5:  # Skip very dissimilar results
+            # Skip very dissimilar results (higher distance = less similar)
+            if distances[idx] > MAX_DISTANCE_THRESHOLD:
                 continue
 
         # Using 'answer' as the primary context, as 'question' is in metadata
@@ -346,7 +366,7 @@ async def chat(request: Request, chat_request: ChatRequest):
         if cached_response:
             return ChatResponse(response=cached_response)
 
-        context = get_relevant_context(request, chat_request.message, n_results=5)
+        context = get_relevant_context(request, chat_request.message)
 
         if not context:
             return ChatResponse(response=NO_CONTEXT_ERROR_MESSAGE)
@@ -383,7 +403,7 @@ async def chat_stream(request: Request, chat_request: ChatRequest):
     try:
         # Note: Streaming responses are not cached (harder to cache streams)
 
-        context = get_relevant_context(request, chat_request.message, n_results=5)
+        context = get_relevant_context(request, chat_request.message)
 
         if not context:
             async def error_stream():

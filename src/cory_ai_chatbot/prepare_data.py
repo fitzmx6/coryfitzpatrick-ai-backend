@@ -9,12 +9,16 @@ from pathlib import Path
 PROJECT_ROOT = Path(__file__).parent.parent.parent
 DATA_DIR = PROJECT_ROOT / "data"
 
+# Model and Collection Constants
+EMBEDDING_MODEL_NAME = 'all-MiniLM-L6-v2'
+COLLECTION_NAME = "cory_profile"
+
 def prepare_training_data():
     """Load JSONL and create vector database"""
 
     # Initialize embedding model (runs locally)
     print("Loading embedding model...")
-    embedding_model = SentenceTransformer('all-MiniLM-L6-v2')
+    embedding_model = SentenceTransformer(EMBEDDING_MODEL_NAME)
 
     # Initialize ChromaDB (persistent storage)
     print("Initializing ChromaDB...")
@@ -23,14 +27,14 @@ def prepare_training_data():
     
     # Create or get collection
     try:
-        client.delete_collection("cory_profile")
+        client.delete_collection(COLLECTION_NAME)
         print("Deleted existing collection.")
     except ValueError:
         # Collection doesn't exist, which is fine
         pass
     
     collection = client.create_collection(
-        name="cory_profile",
+        name=COLLECTION_NAME,
         metadata={"description": "Cory Fitzpatrick's professional profile"}
     )
     

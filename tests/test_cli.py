@@ -1,3 +1,4 @@
+import pytest
 from unittest.mock import Mock, patch
 from io import StringIO
 
@@ -246,3 +247,145 @@ def test_given_unicode_response_when_send_question_then_handles_unicode(mock_pos
 
     assert "Shang-Chi" in result
     assert "martial arts" in result
+
+
+# ============================================================================
+# Test: main function
+# ============================================================================
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['quit'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_quit_command_when_main_runs_then_exits_gracefully(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+
+    main()
+
+    mock_welcome.assert_called_once()
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['exit'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_exit_command_when_main_runs_then_exits_gracefully(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+
+    main()
+
+    mock_welcome.assert_called_once()
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['bye'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_bye_command_when_main_runs_then_exits_gracefully(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+
+    main()
+
+    mock_welcome.assert_called_once()
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['q'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_q_command_when_main_runs_then_exits_gracefully(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+
+    main()
+
+    mock_welcome.assert_called_once()
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['', 'quit'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_empty_input_when_main_runs_then_skips_and_continues(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+
+    main()
+
+    assert mock_input.call_count == 2
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=EOFError())
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_eof_error_when_main_runs_then_exits_gracefully(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+    import sys
+
+    with pytest.raises(SystemExit):
+        main()
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=KeyboardInterrupt())
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_keyboard_interrupt_when_main_runs_then_exits_gracefully(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+    import sys
+
+    with pytest.raises(SystemExit):
+        main()
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['What is Python?', 'quit'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_valid_question_when_main_runs_then_sends_request(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.iter_content.return_value = iter(["Python is a programming language"])
+    mock_post.return_value = mock_response
+
+    main()
+
+    mock_post.assert_called_once()
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['Question 1', 'Question 2', 'quit'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_multiple_questions_when_main_runs_then_maintains_history(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+
+    mock_response = Mock()
+    mock_response.status_code = 200
+    mock_response.iter_content.return_value = iter(["Answer"])
+    mock_post.return_value = mock_response
+
+    main()
+
+    # Should have called post twice (once for each question)
+    assert mock_post.call_count >= 2
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['Test question', 'n'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_error_and_no_retry_when_main_runs_then_exits(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+    import requests
+
+    mock_post.side_effect = requests.exceptions.ConnectionError()
+
+    main()
+
+    assert mock_input.call_count == 2  # Question + retry prompt
+
+
+@patch('cory_ai_chatbot.cli.print_welcome')
+@patch('cory_ai_chatbot.cli.input', side_effect=['Test question', 'y', 'quit'])
+@patch('cory_ai_chatbot.cli.requests.post')
+def test_given_error_and_retry_when_main_runs_then_continues(mock_post, mock_input, mock_welcome):
+    from cory_ai_chatbot.cli import main
+    import requests
+
+    mock_post.side_effect = requests.exceptions.ConnectionError()
+
+    main()
+
+    assert mock_input.call_count == 3  # Question + retry prompt + quit
