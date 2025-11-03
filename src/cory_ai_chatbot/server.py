@@ -126,7 +126,7 @@ app = FastAPI(lifespan=lifespan)
 app.state.limiter = limiter
 
 # Custom rate limit handler
-async def rate_limit_handler(request: Request, exc: RateLimitExceeded):
+async def rate_limit_handler(request: Request, exc: RateLimitExceeded) -> JSONResponse:
     return JSONResponse(
         status_code=429,
         content={"detail": "Rate limit exceeded. Please try again later."}
@@ -332,11 +332,11 @@ def get_relevant_context(request: Request, query: str) -> str:
     context_parts = []
     distances = results.get('distances', [[]])[0] if 'distances' in results else []
 
-    for idx, (doc, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
+    for index, (doc, metadata) in enumerate(zip(results['documents'][0], results['metadatas'][0])):
         # Skip low-quality matches if distance data is available
-        if distances and idx < len(distances):
+        if distances and index < len(distances):
             # Skip very dissimilar results (higher distance = less similar)
-            if distances[idx] > MAX_DISTANCE_THRESHOLD:
+            if distances[index] > MAX_DISTANCE_THRESHOLD:
                 continue
 
         # Using 'answer' as the primary context, as 'question' is in metadata
@@ -363,6 +363,7 @@ async def chat(request: Request, chat_request: ChatRequest):
     try:
         # Check cache first
         cached_response = get_cached_response(chat_request.message)
+
         if cached_response:
             return ChatResponse(response=cached_response)
 
